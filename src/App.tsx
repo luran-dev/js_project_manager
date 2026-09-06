@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { initialWorkspaces } from "./data";
 import { ProjectManagerModal } from "./ProjectManagerModal";
 import { ProjectPlanner } from "./ProjectPlanner";
+import { ResourceAnalyticsView } from "./ResourceAnalyticsView";
 import { ResourceManagerModal } from "./ResourceManagerModal";
 import { WorkspaceManagerModal } from "./WorkspaceManagerModal";
 import { addWorkingDays } from "./schedule";
@@ -15,6 +16,7 @@ const clearAssignee = (task: Task): Task => {
   return rest;
 };
 const hasChildren = (tasks: readonly Task[], id: string): boolean => tasks.some((task) => task.parentId === id);
+type AppView = "planner" | "reports";
 
 export function App() {
   const [workspaces, setWorkspaces] = useState<readonly Workspace[]>(initialWorkspaces);
@@ -23,6 +25,7 @@ export function App() {
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [showResourceManager, setShowResourceManager] = useState(false);
+  const [view, setView] = useState<AppView>("planner");
   const workspace = useMemo(() => workspaces.find((item) => item.id === workspaceId) ?? workspaces[0], [workspaceId, workspaces]);
 
   if (workspace === undefined) {
@@ -70,7 +73,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar"><div className="brand" aria-label="ProjectVibe home"><span className="brand-mark"><BarChart3 size={18} /></span><strong>ProjectVibe</strong></div><div className="profile"><span className="avatar"><UserRound size={18} /></span> Username <ChevronDown size={14} /></div></header>
-      <nav className="side-rail" aria-label="Primary navigation"><button className="rail-button active" aria-label="Projects"><Folder size={20} /></button><button className="rail-button" aria-label="Tasks"><ClipboardList size={20} /></button><button className="rail-button" aria-label="Reports"><BarChart3 size={20} /></button><button className="rail-button" aria-label="Settings"><Settings size={20} /></button><button className="rail-button bottom" aria-label="Sign out"><LogOut size={20} /></button></nav>
+      <nav className="side-rail" aria-label="Primary navigation"><button className={view === "planner" ? "rail-button active" : "rail-button"} aria-label="Projects" onClick={() => setView("planner")}><Folder size={20} /></button><button className="rail-button" aria-label="Tasks"><ClipboardList size={20} /></button><button className={view === "reports" ? "rail-button active" : "rail-button"} aria-label="Reports" onClick={() => setView("reports")}><BarChart3 size={20} /></button><button className="rail-button" aria-label="Settings"><Settings size={20} /></button><button className="rail-button bottom" aria-label="Sign out"><LogOut size={20} /></button></nav>
 
       <main className="workspace">
         <section className="context-bar" aria-label="Workspace and project context">
@@ -94,7 +97,7 @@ export function App() {
           saveResources(users, ptos, deletedResourceIds);
           setShowResourceManager(false);
         }} /> : null}
-        <ProjectPlanner project={project} workspace={workspace} onTasksChange={setProjectTasks} />
+        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : <ProjectPlanner project={project} workspace={workspace} onTasksChange={setProjectTasks} />}
       </main>
     </div>
   );

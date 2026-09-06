@@ -14,6 +14,11 @@ const seedTasks: Workspace["projects"][number]["tasks"] = [
   { id: "t25", title: "Task 2.5", startDate: "2026-08-10", endDate: "2026-08-14", duration: 5, status: "TO DO", progress: 10, estimatedHours: 20, assigneeId: "u3", parentId: "p2", sortOrder: 11, dependencyIds: ["t24"] },
   { id: "m1", title: "Task 1 Milestone", startDate: "2026-08-17", endDate: "2026-08-17", duration: 0, status: "TO DO", progress: 0, estimatedHours: 0, parentId: "p2", sortOrder: 12, dependencyIds: ["t25"], milestone: true },
 ];
+const launchTasks: Workspace["projects"][number]["tasks"] = [
+  { id: "lp1", title: "Launch Readiness", startDate: "2026-06-09", endDate: "2026-06-24", duration: 12, status: "IN PROGRESS", progress: 35, estimatedHours: 0, sortOrder: 1, dependencyIds: [] },
+  { id: "lt1", title: "Integration Support", startDate: "2026-06-09", endDate: "2026-06-18", duration: 8, status: "IN PROGRESS", progress: 30, estimatedHours: 48, assigneeId: "u2", parentId: "lp1", sortOrder: 2, dependencyIds: [] },
+  { id: "lt2", title: "Release QA", startDate: "2026-06-19", endDate: "2026-06-24", duration: 4, status: "IN QA", progress: 20, estimatedHours: 24, assigneeId: "u1", parentId: "lp1", sortOrder: 3, dependencyIds: ["lt1"] },
+];
 
 export const initialWorkspaces: readonly Workspace[] = [{
   id: "w1",
@@ -29,5 +34,6 @@ export const initialWorkspaces: readonly Workspace[] = [{
   ],
   projects: [
     { id: "project-phase-1", name: "Project Phase 1", defaultCountry: "Korea", tasks: seedTasks },
+    { id: "project-launch", name: "Mobile Launch", defaultCountry: "Korea", tasks: launchTasks },
   ],
 }];
