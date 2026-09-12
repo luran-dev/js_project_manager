@@ -1,7 +1,9 @@
-import { Plus, Search } from "lucide-react";
+import { Lock, Plus, Search, Unlock } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Gantt, WbsTable } from "./components";
 import type { TaskDateChange } from "./components";
+import { ExecutionTable } from "./ExecutionTable";
+import { actualTask } from "./execution";
 import { ResourceHeatmap } from "./ResourceHeatmap";
 import { addDays, addWorkingDays, cascadeTasks, daysBetween, isHoliday, visibleTasks, workingDaysBetween } from "./schedule";
 import type { ProjectState, Task, TaskId, TaskProgressColor, TaskStatus, Workspace, Zoom } from "./types";
@@ -31,11 +33,12 @@ const taskWithAssignee = (task: Task, assigneeId: string): Task => {
   return { ...task, assigneeId };
 };
 
-export function ProjectPlanner({ project, workspace, onTasksChange }: { readonly project: ProjectState; readonly workspace: Workspace; readonly onTasksChange: (updater: (tasks: readonly Task[]) => readonly Task[]) => void }) {
+export function ProjectPlanner({ project, workspace, onProjectChange, onTasksChange }: { readonly project: ProjectState; readonly workspace: Workspace; readonly onProjectChange: (updater: (project: ProjectState) => ProjectState) => void; readonly onTasksChange: (updater: (tasks: readonly Task[]) => readonly Task[]) => void }) {
   const [query, setQuery] = useState("");
   const [filterField, setFilterField] = useState<FilterField>("taskName");
   const [zoom, setZoom] = useState<Zoom>("month");
-  const [tab, setTab] = useState<"planner" | "resources">("planner");
+  const [tab, setTab] = useState<"planner" | "execution" | "resources">("planner");
+  const [showBaseline, setShowBaseline] = useState(true);
   const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<TaskId>>(new Set());
   const country = project.defaultCountry ?? "Korea";
   const tasks = project.tasks;
@@ -46,13 +49,18 @@ export function ProjectPlanner({ project, workspace, onTasksChange }: { readonly
     const value = filterField === "status" ? task.status : filterField === "assignee" ? assigneeById.get(task.assigneeId ?? "") ?? "Unassigned" : task.title;
     return value.toLowerCase().includes(normalizedQuery);
   });
-  const minDate = scheduledTasks.map((task) => task.startDate).sort()[0] ?? "2026-06-01";
-  const maxDate = scheduledTasks.map((task) => task.endDate).sort().at(-1) ?? "2026-08-31";
+  const allExecutionTasks = scheduledTasks.map(actualTask);
+  const chartTasks = [...scheduledTasks, ...allExecutionTasks];
+  const minDate = chartTasks.map((task) => task.startDate).sort()[0] ?? "2026-06-01";
+  const maxDate = chartTasks.map((task) => task.endDate).sort().at(-1) ?? "2026-08-31";
   const totalDays = daysBetween(minDate, maxDate) + 10;
   const scale = zoomScale[zoom];
   const timelineDates = dateRange(minDate, totalDays);
   const timelineMarkers = zoom === "day" ? timelineDates : timelineDates.filter((date) => zoom === "week" ? isMonday(date) : date.endsWith("-01") || date === minDate);
   const holidayDates = timelineDates.filter((date) => isHoliday(date, country));
+  const actualRows = rows.map(actualTask);
+  const plannerLocked = project.plannerLocked === true;
+  const setPlannerLocked = (locked: boolean) => onProjectChange((current) => ({ ...current, plannerLocked: locked }));
 
   const setTaskDates = (change: TaskDateChange) => onTasksChange((current) => {
     const target = current.find((task) => task.id === change.id);
@@ -77,6 +85,11 @@ export function ProjectPlanner({ project, workspace, onTasksChange }: { readonly
   const setTaskProgress = (id: TaskId, progress: number) => onTasksChange((current) => current.map((task) => (task.id === id && !current.some((candidate) => candidate.parentId === id) ? { ...task, progress } : task)));
   const setTaskProgressColor = (id: TaskId, progressColor: TaskProgressColor) => onTasksChange((current) => current.map((task) => (task.id === id ? { ...task, progressColor } : task)));
   const setTaskAssignee = (id: TaskId, userId: string) => onTasksChange((current) => current.map((task) => (task.id === id ? taskWithAssignee(task, userId) : task)));
+  const setActualAssignee = (id: TaskId, userId: string) => onTasksChange((current) => current.map((task) => {
+    if (task.id !== id) { return task; }
+    if (userId === "") { return { ...task, actualAssigneeId: null }; }
+    return { ...task, actualAssigneeId: userId };
+  }));
   const setDependencyIds = (id: TaskId, dependencyIds: readonly TaskId[]) => onTasksChange((current) => {
     const validIds = new Set(current.map((task) => task.id));
     return current.map((task) => (task.id === id ? { ...task, dependencyIds: dependencyIds.filter((dependencyId) => dependencyId !== id && validIds.has(dependencyId)) } : task));
@@ -130,6 +143,7 @@ export function ProjectPlanner({ project, workspace, onTasksChange }: { readonly
 
   const deleteTask = (id: TaskId) => onTasksChange((current) => current.some((task) => task.parentId === id) ? (window.alert("하위 태스크가 있는 항목은 먼저 하위 태스크를 이동한 뒤 삭제하세요."), current) : current.filter((task) => task.id !== id).map((task, index) => ({ ...task, sortOrder: index + 1, dependencyIds: task.dependencyIds.filter((dependencyId) => dependencyId !== id) })));
   const addChild = () => {
+    if (plannerLocked) { return; }
     const lastOrder = tasks.length === 0 ? 0 : Math.max(...tasks.map((task) => task.sortOrder));
     const predecessor = scheduledTasks.find((task) => task.id === "m1");
     const startDate = predecessor === undefined ? maxDate : addDays(predecessor.endDate, 1);
@@ -139,6 +153,22 @@ export function ProjectPlanner({ project, workspace, onTasksChange }: { readonly
       return [...current, current.some((task) => task.id === "p2") ? { ...assigned, parentId: "p2" } : assigned];
     });
   };
+
+  const setActualDates = (change: TaskDateChange) => onTasksChange((current) => current.map((task) => {
+    if (task.id !== change.id || current.some((candidate) => candidate.parentId === change.id)) { return task; }
+    const startDate = change.startDate;
+    const endDate = change.endDate < startDate ? startDate : change.endDate;
+    return { ...task, actualStartDate: startDate, actualEndDate: endDate, actualDuration: change.preserveDuration ? task.actualDuration ?? task.duration : Math.max(1, workingDaysBetween(startDate, endDate, task.actualAssigneeId ?? task.assigneeId, workspace.ptos, country)) };
+  }));
+  const setActualDuration = (id: TaskId, duration: number) => onTasksChange((current) => current.map((task) => {
+    if (task.id !== id || current.some((candidate) => candidate.parentId === id) || !Number.isInteger(duration) || duration < 0) { return task; }
+    const startDate = task.actualStartDate ?? task.startDate;
+    return { ...task, actualDuration: duration, actualStartDate: startDate, actualEndDate: duration === 0 ? startDate : addWorkingDays(startDate, duration, task.actualAssigneeId ?? task.assigneeId, workspace.ptos, country) };
+  }));
+  const setActualStatus = (id: TaskId, actualStatus: TaskStatus) => onTasksChange((current) => current.map((task) => (task.id === id ? { ...task, actualStatus } : task)));
+  const setActualProgress = (id: TaskId, actualProgress: number) => onTasksChange((current) => current.map((task) => (task.id === id && !current.some((candidate) => candidate.parentId === id) ? { ...task, actualProgress } : task)));
+  const setActualProgressColor = (id: TaskId, actualProgressColor: TaskProgressColor) => onTasksChange((current) => current.map((task) => (task.id === id ? { ...task, actualProgressColor } : task)));
+  const setActualEstimatedHours = (id: TaskId, actualEstimatedHours: number) => onTasksChange((current) => current.map((task) => (task.id === id && Number.isInteger(actualEstimatedHours) && actualEstimatedHours >= 0 ? { ...task, actualEstimatedHours } : task)));
 
   const toggle = (id: TaskId) => setCollapsedIds((current) => {
     const next = new Set(current);
@@ -151,12 +181,16 @@ export function ProjectPlanner({ project, workspace, onTasksChange }: { readonly
       <div className="toolbar">
         <div className="searchbox"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search tasks" placeholder={`Search ${filterLabels[filterField]}...`} /></div>
         <select className="filter-select" aria-label="Search field" value={filterField} onChange={(event) => setFilterField(parseFilterField(event.target.value))}>{Object.entries(filterLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        <button className="text-button primary" onClick={addChild}><Plus size={15} /> Task</button>
-        <div className="tabs" role="tablist" aria-label="View"><button className={tab === "planner" ? "selected" : ""} onClick={() => setTab("planner")}>Planner</button><button className={tab === "resources" ? "selected" : ""} onClick={() => setTab("resources")}>Resources</button></div>
+        {tab === "planner" ? <button className="text-button primary" onClick={addChild} disabled={plannerLocked}><Plus size={15} /> Task</button> : null}
+        {tab === "planner" ? <button className="text-button" onClick={() => setPlannerLocked(!plannerLocked)}>{plannerLocked ? <Lock size={15} /> : <Unlock size={15} />}{plannerLocked ? "Locked" : "Unlocked"}</button> : null}
+        {tab === "execution" ? <button className={showBaseline ? "text-button selected" : "text-button"} onClick={() => setShowBaseline((current) => !current)}>Show baseline</button> : null}
+        <div className="tabs" role="tablist" aria-label="View"><button className={tab === "planner" ? "selected" : ""} onClick={() => setTab("planner")}>Planner</button><button className={tab === "execution" ? "selected" : ""} onClick={() => setTab("execution")}>Execution</button><button className={tab === "resources" ? "selected" : ""} onClick={() => setTab("resources")}>Resources</button></div>
         <div className="zoom" aria-label="Timeline zoom"><span>Zoom:</span>{(["day", "week", "month"] satisfies readonly Zoom[]).map((value) => <button key={value} className={zoom === value ? "selected" : ""} onClick={() => setZoom(value)}>{zoomLabels[value]}</button>)}</div>
       </div>
       {tab === "planner" ? (
-        <div className="split"><WbsTable rows={rows} allTasks={scheduledTasks} users={workspace.users} onToggle={toggle} onTitleChange={setTaskTitle} onStatusChange={setTaskStatus} onDateChange={(id, startDate, endDate) => setTaskDates({ id, startDate, endDate, preserveDuration: false })} onDurationChange={setTaskDuration} onProgressChange={setTaskProgress} onProgressColorChange={setTaskProgressColor} onAssigneeChange={setTaskAssignee} onDependencyChange={setDependencyIds} onTaskReorder={reorderTasks} onMoveUp={(id) => moveTask(id, "up")} onMoveDown={(id) => moveTask(id, "down")} onIndent={indentTask} onOutdent={outdentTask} onDelete={deleteTask} collapsedIds={collapsedIds} /><Gantt rows={rows} allTasks={scheduledTasks} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} onTaskDateChange={setTaskDates} /></div>
+        <div className="split"><WbsTable rows={rows} allTasks={scheduledTasks} users={workspace.users} readOnly={plannerLocked} onToggle={toggle} onTitleChange={setTaskTitle} onStatusChange={setTaskStatus} onDateChange={(id, startDate, endDate) => setTaskDates({ id, startDate, endDate, preserveDuration: false })} onDurationChange={setTaskDuration} onProgressChange={setTaskProgress} onProgressColorChange={setTaskProgressColor} onAssigneeChange={setTaskAssignee} onDependencyChange={setDependencyIds} onTaskReorder={reorderTasks} onMoveUp={(id) => moveTask(id, "up")} onMoveDown={(id) => moveTask(id, "down")} onIndent={indentTask} onOutdent={outdentTask} onDelete={deleteTask} collapsedIds={collapsedIds} /><Gantt rows={rows} allTasks={scheduledTasks} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} readOnly={plannerLocked} onTaskDateChange={setTaskDates} /></div>
+      ) : tab === "execution" ? (
+        <div className="split execution-split"><ExecutionTable rows={rows} actualRows={actualRows} allTasks={scheduledTasks} users={workspace.users} collapsedIds={collapsedIds} showBaseline={showBaseline} onToggle={toggle} onActualDateChange={(id, startDate, endDate) => setActualDates({ id, startDate, endDate, preserveDuration: false })} onActualDurationChange={setActualDuration} onActualStatusChange={setActualStatus} onActualProgressChange={setActualProgress} onActualProgressColorChange={setActualProgressColor} onActualAssigneeChange={setActualAssignee} onActualEstimatedHoursChange={setActualEstimatedHours} /><Gantt rows={actualRows} allTasks={scheduledTasks} baselineRows={showBaseline ? rows : []} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} onTaskDateChange={setActualDates} /></div>
       ) : (
         <ResourceHeatmap tasks={scheduledTasks} users={workspace.users} ptos={workspace.ptos} dates={dateRange("2026-07-01", 45)} />
       )}

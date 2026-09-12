@@ -197,7 +197,7 @@ export function App() {
           saveResources(users, ptos, deletedResourceIds);
           setShowResourceManager(false);
         }} /> : null}
-        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : <ProjectPlanner project={project} workspace={workspace} onTasksChange={setProjectTasks} />}
+        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : <ProjectPlanner project={project} workspace={workspace} onProjectChange={updateProject} onTasksChange={setProjectTasks} />}
       </main>
     </div>
   );

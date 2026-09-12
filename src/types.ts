@@ -50,6 +50,14 @@ export type Task = {
   readonly progressColor?: TaskProgressColor;
   readonly estimatedHours: number;
   readonly assigneeId?: UserId;
+  readonly actualStartDate?: string;
+  readonly actualEndDate?: string;
+  readonly actualDuration?: number;
+  readonly actualStatus?: TaskStatus;
+  readonly actualProgress?: number;
+  readonly actualProgressColor?: TaskProgressColor;
+  readonly actualEstimatedHours?: number;
+  readonly actualAssigneeId?: UserId | null;
   readonly parentId?: TaskId;
   readonly sortOrder: number;
   readonly dependencyIds: readonly TaskId[];
@@ -60,6 +68,7 @@ export type ProjectState = {
   readonly id: string;
   readonly name: string;
   readonly defaultCountry?: ProjectCountry;
+  readonly plannerLocked?: boolean;
   readonly tasks: readonly Task[];
 };
 
