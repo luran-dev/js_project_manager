@@ -8,12 +8,28 @@ export const TASK_STATUSES = ["TO DO", "IN PROGRESS", "IN QA", "DONE", "BLOCKED"
 export type TaskStatus = typeof TASK_STATUSES[number];
 export const TASK_PROGRESS_COLORS = ["grey", "yellow", "red", "green", "blue"] as const;
 export type TaskProgressColor = typeof TASK_PROGRESS_COLORS[number];
+export const WORKSPACE_ROLES = ["OWNER", "ADMIN", "MEMBER", "VIEWER"] as const;
+export type WorkspaceRole = typeof WORKSPACE_ROLES[number];
 
 export type User = {
   readonly id: UserId;
   readonly name: string;
   readonly email: string;
   readonly dailyCapacityHours: number;
+};
+
+export type CurrentUser = {
+  readonly id: UserId;
+  readonly name: string;
+  readonly email: string;
+  readonly defaultCountry: ProjectCountry;
+  readonly workspaceMemberships: readonly WorkspaceMembership[];
+};
+
+export type WorkspaceMembership = {
+  readonly userId: UserId;
+  readonly workspaceId: string;
+  readonly role: WorkspaceRole;
 };
 
 export type Pto = {

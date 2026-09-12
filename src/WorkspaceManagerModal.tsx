@@ -1,24 +1,25 @@
 import { Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import type { ProjectState, Workspace } from "./types";
+import type { ProjectCountry, ProjectState, Workspace } from "./types";
 
 type Props = {
   readonly workspaces: readonly Workspace[];
   readonly activeWorkspaceId: string;
+  readonly defaultCountry: ProjectCountry;
   readonly onCancel: () => void;
   readonly onConfirm: (workspaces: readonly Workspace[], activeWorkspaceId: string) => void;
 };
 
-const newProject = (): ProjectState => ({ id: `project-${Date.now()}`, name: "New Project", defaultCountry: "Korea", tasks: [] });
+const newProject = (defaultCountry: ProjectCountry): ProjectState => ({ id: `project-${Date.now()}`, name: "New Project", defaultCountry, tasks: [] });
 
-export function WorkspaceManagerModal({ workspaces, activeWorkspaceId, onCancel, onConfirm }: Props) {
+export function WorkspaceManagerModal({ workspaces, activeWorkspaceId, defaultCountry, onCancel, onConfirm }: Props) {
   const [draftWorkspaces, setDraftWorkspaces] = useState<readonly Workspace[]>(workspaces);
   const [selectedId, setSelectedId] = useState(activeWorkspaceId);
   const [newName, setNewName] = useState("New Workspace");
 
   const addWorkspace = () => {
     const id = `w-${Date.now()}`;
-    setDraftWorkspaces((current) => [...current, { id, name: newName.trim() || "New Workspace", users: [], ptos: [], projects: [newProject()] }]);
+    setDraftWorkspaces((current) => [...current, { id, name: newName.trim() || "New Workspace", users: [], ptos: [], projects: [newProject(defaultCountry)] }]);
     setSelectedId(id);
     setNewName("New Workspace");
   };

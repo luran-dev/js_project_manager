@@ -1,22 +1,23 @@
 import { Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import { PROJECT_COUNTRIES, type ProjectState } from "./types";
+import { PROJECT_COUNTRIES, type ProjectCountry, type ProjectState } from "./types";
 
 type Props = {
   readonly projects: readonly ProjectState[];
   readonly activeProjectId: string;
+  readonly defaultCountry: ProjectCountry;
   readonly onCancel: () => void;
   readonly onConfirm: (projects: readonly ProjectState[], activeProjectId: string) => void;
 };
 
-export function ProjectManagerModal({ projects, activeProjectId, onCancel, onConfirm }: Props) {
+export function ProjectManagerModal({ projects, activeProjectId, defaultCountry, onCancel, onConfirm }: Props) {
   const [draftProjects, setDraftProjects] = useState<readonly ProjectState[]>(projects);
   const [selectedId, setSelectedId] = useState(activeProjectId);
   const [newName, setNewName] = useState("New Project");
 
   const addProject = () => {
     const id = `project-${Date.now()}`;
-    setDraftProjects((current) => [...current, { id, name: newName.trim() || "New Project", defaultCountry: "Korea", tasks: [] }]);
+    setDraftProjects((current) => [...current, { id, name: newName.trim() || "New Project", defaultCountry, tasks: [] }]);
     setSelectedId(id);
     setNewName("New Project");
   };
