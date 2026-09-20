@@ -2,6 +2,7 @@ import { BarChart3, ChevronDown, ClipboardList, Folder, LogOut, Settings, UserRo
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ProjectManagerModal } from "./ProjectManagerModal";
 import { ProjectPlanner } from "./ProjectPlanner";
+import { PasswordResetFlow } from "./PasswordResetFlow";
 import { ResourceAnalyticsView } from "./ResourceAnalyticsView";
 import { ResourceManagerModal } from "./ResourceManagerModal";
 import { WorkspaceManagerModal } from "./WorkspaceManagerModal";
@@ -22,11 +23,12 @@ type AuthStatus = "loading" | "signedOut" | "signedIn";
 export function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authMode, setAuthMode] = useState<"login" | "register" | "reset">("login");
   const [signupName, setSignupName] = useState("");
   const [loginEmail, setLoginEmail] = useState("user@example.com");
   const [loginPassword, setLoginPassword] = useState("password");
   const [authError, setAuthError] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -94,18 +96,25 @@ export function App() {
   if (snapshot === null) {
     return (
       <div className="auth-shell">
-        <form className="auth-card" onSubmit={submitLogin}>
+        <section className="auth-card" aria-labelledby="auth-title">
           <div className="brand auth-brand" aria-label="ProjectVibe home"><span className="brand-mark"><BarChart3 size={18} /></span><strong>ProjectVibe</strong></div>
-          <div className="auth-tabs" role="tablist" aria-label="Authentication mode">
-            <button className={authMode === "login" ? "selected" : ""} type="button" onClick={() => setAuthMode("login")}>Sign in</button>
-            <button className={authMode === "register" ? "selected" : ""} type="button" onClick={() => setAuthMode("register")}>Create account</button>
-          </div>
-          {authMode === "register" ? <label>Name<input value={signupName} onChange={(event) => setSignupName(event.target.value)} autoComplete="name" /></label> : null}
-          <label>Email<input value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} type="email" autoComplete="email" /></label>
-          <label>Password<input value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} type="password" autoComplete="current-password" /></label>
-          {authError ? <p className="auth-error">{authError}</p> : null}
-          <button className="text-button primary" type="submit">{authMode === "login" ? "Sign in" : "Create account"}</button>
-        </form>
+          {authMode === "reset" ? <PasswordResetFlow onCancel={() => setAuthMode("login")} onComplete={() => { setAuthMode("login"); setAuthMessage("Password updated. Sign in with your new password."); }} /> : <>
+            <h1 id="auth-title">{authMode === "login" ? "Sign in" : "Create account"}</h1>
+            <div className="auth-tabs" role="tablist" aria-label="Authentication mode">
+              <button className={authMode === "login" ? "selected" : ""} type="button" onClick={() => { setAuthMode("login"); setAuthError(""); }}>Sign in</button>
+              <button className={authMode === "register" ? "selected" : ""} type="button" onClick={() => { setAuthMode("register"); setAuthError(""); }}>Create account</button>
+            </div>
+            <form className="auth-form" onSubmit={submitLogin}>
+              {authMode === "register" ? <label>Name<input value={signupName} onChange={(event) => setSignupName(event.target.value)} autoComplete="name" /></label> : null}
+              <label>Email<input value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} type="email" autoComplete="email" /></label>
+              <label>Password<input value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} minLength={authMode === "register" ? 8 : undefined} type="password" autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>
+              {authError ? <p className="auth-error" role="alert">{authError}</p> : null}
+              {authMessage ? <p className="auth-message" aria-live="polite">{authMessage}</p> : null}
+              <button className="text-button primary" type="submit">{authMode === "login" ? "Sign in" : "Create account"}</button>
+            </form>
+            {authMode === "login" ? <button className="auth-link" type="button" onClick={() => { setAuthError(""); setAuthMessage(""); setAuthMode("reset"); }}>Forgot password?</button> : null}
+          </>}
+        </section>
       </div>
     );
   }

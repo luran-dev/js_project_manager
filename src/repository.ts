@@ -11,6 +11,9 @@ export type ProjectVibeRepository = {
   readonly saveSnapshot: (snapshot: AppSnapshot) => Promise<void>;
   readonly login: (email: string, password: string) => Promise<AppSnapshot>;
   readonly register: (name: string, email: string, password: string) => Promise<AppSnapshot>;
+  readonly requestPasswordReset: (email: string) => Promise<void>;
+  readonly verifyPasswordReset: (email: string, code: string) => Promise<string>;
+  readonly completePasswordReset: (resetToken: string, password: string) => Promise<void>;
   readonly logout: () => Promise<void>;
 };
 
@@ -41,6 +44,9 @@ export const mockProjectVibeRepository: ProjectVibeRepository = (() => {
     },
     login: async () => cloneSnapshot(snapshot),
     register: async () => cloneSnapshot(snapshot),
+    requestPasswordReset: async () => undefined,
+    verifyPasswordReset: async () => "mock-reset-token",
+    completePasswordReset: async () => undefined,
     logout: async () => undefined,
   };
 })();
@@ -58,6 +64,16 @@ export const projectVibeRepository: ProjectVibeRepository = {
   },
   login: (email, password) => requestJson<AppSnapshot>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   register: (name, email, password) => requestJson<AppSnapshot>("/api/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) }),
+  requestPasswordReset: async (email) => {
+    await requestJson<{ readonly ok: true }>("/api/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email }) });
+  },
+  verifyPasswordReset: async (email, code) => {
+    const result = await requestJson<{ readonly resetToken: string }>("/api/auth/password-reset/verify", { method: "POST", body: JSON.stringify({ email, code }) });
+    return result.resetToken;
+  },
+  completePasswordReset: async (resetToken, password) => {
+    await requestJson<{ readonly ok: true }>("/api/auth/password-reset/complete", { method: "POST", body: JSON.stringify({ resetToken, password }) });
+  },
   logout: async () => {
     await requestJson<{ readonly ok: true }>("/api/auth/logout", { method: "POST" });
   },

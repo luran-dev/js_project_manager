@@ -1,9 +1,12 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { createPasswordResetHandler, HttpError } from "./passwordReset.mjs";
 import { currentUser, initialWorkspaces } from "./seed.mjs";
+
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 const port = Number(process.env.PORT ?? 8787);
 const dbPath = resolve(process.env.DATABASE_URL?.replace(/^file:/, "") ?? ".data/projectvibe.sqlite");
@@ -39,6 +42,7 @@ const readJson = (request) => new Promise((resolveRead, reject) => {
 const b64 = (value) => Buffer.from(value, "utf8").toString("base64");
 const unb64 = (value) => Buffer.from(value, "base64").toString("utf8");
 const now = () => Date.now();
+const normalizedEmail = (value) => String(value ?? "").trim().toLowerCase();
 const createUserSnapshot = (user) => {
   const workspaceId = `w-${randomBytes(8).toString("hex")}`;
   return {
@@ -64,6 +68,8 @@ const initDb = () => {
     CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT NOT NULL, password_hash TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS app_snapshots (user_id TEXT PRIMARY KEY, snapshot_json TEXT NOT NULL, updated_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS password_reset_codes (user_id TEXT PRIMARY KEY, code_hash TEXT NOT NULL, expires_at INTEGER NOT NULL, attempts_remaining INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS password_reset_grants (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE, expires_at INTEGER NOT NULL);
   `);
   const userCount = Number(sql("SELECT COUNT(*) FROM users;").trim());
   if (userCount === 0) {
@@ -98,6 +104,7 @@ const loadSnapshot = (userId) => {
 const saveSnapshot = (userId, snapshot) => {
   sql(`INSERT INTO app_snapshots (user_id, snapshot_json, updated_at) VALUES (${quote(userId)}, ${quote(b64(JSON.stringify(snapshot)))}, ${now()}) ON CONFLICT(user_id) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at;`);
 };
+const handlePasswordReset = createPasswordResetHandler({ sql, selectOneJson, quote, hashPassword, verifyPassword, json, readJson, now });
 
 initDb();
 
@@ -116,6 +123,11 @@ export const handleApiRequest = async (request, response) => {
       return;
     }
 
+    if (request.method === "POST" && url.pathname.startsWith("/api/auth/password-reset/")) {
+      await handlePasswordReset(request, response, url.pathname);
+      return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/auth/login") {
       const body = await readJson(request);
       const user = selectOneJson(`SELECT id, email, name, password_hash FROM users WHERE email = ${quote(body.email ?? "")};`);
@@ -130,7 +142,7 @@ export const handleApiRequest = async (request, response) => {
 
     if (request.method === "POST" && url.pathname === "/api/auth/register") {
       const body = await readJson(request);
-      const email = String(body.email ?? "").trim().toLowerCase();
+      const email = normalizedEmail(body.email);
       const name = String(body.name ?? "").trim();
       const password = String(body.password ?? "");
       if (!email || !name || password.length < 6) {
@@ -178,12 +190,12 @@ export const handleApiRequest = async (request, response) => {
 
     json(response, 404, { error: "Not found" });
   } catch (error) {
-    json(response, 500, { error: error instanceof Error ? error.message : "Server error" });
+    json(response, error instanceof HttpError ? error.status : 500, { error: error instanceof Error ? error.message : "Server error" });
   }
 };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   createServer(handleApiRequest).listen(port, () => {
-    console.log(`ProjectVibe API listening on http://127.0.0.1:${port}`);
+    console.log(`ProjectVibe API listening on http://0.0.0.0:${port}`);
   });
 }
