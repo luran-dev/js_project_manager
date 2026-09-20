@@ -1,5 +1,6 @@
-import { Lock, Plus, Search, Unlock } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Lock, Plus, Search, Unlock, ZoomIn, ZoomOut } from "lucide-react";
+import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Gantt, WbsTable } from "./components";
 import type { TaskDateChange } from "./components";
 import { ExecutionTable } from "./ExecutionTable";
@@ -10,6 +11,10 @@ import type { ProjectState, Task, TaskId, TaskProgressColor, TaskStatus, Workspa
 
 const zoomScale: Record<Zoom, number> = { day: 56, week: 12, month: 7 };
 const zoomLabels: Record<Zoom, string> = { day: "Day", week: "Week", month: "Month" };
+const panelZoomStep = 0.1;
+const minPanelZoom = 0.7;
+const maxPanelZoom = 1.2;
+type SplitStyle = CSSProperties & { readonly "--task-pane-width": string; readonly "--panel-zoom": number };
 const filterLabels = { taskName: "Task Name", status: "Status", assignee: "Assigned To" } as const;
 type FilterField = keyof typeof filterLabels;
 const parseFilterField = (value: string): FilterField => (value === "status" || value === "assignee" ? value : "taskName");
@@ -37,9 +42,13 @@ export function ProjectPlanner({ project, workspace, onProjectChange, onTasksCha
   const [query, setQuery] = useState("");
   const [filterField, setFilterField] = useState<FilterField>("taskName");
   const [zoom, setZoom] = useState<Zoom>("month");
+  const [panelZoom, setPanelZoom] = useState(1);
+  const [taskPanePercent, setTaskPanePercent] = useState(54);
   const [tab, setTab] = useState<"planner" | "execution" | "resources">("planner");
   const [showBaseline, setShowBaseline] = useState(true);
+  const [resourceView, setResourceView] = useState<"planner" | "execution">("planner");
   const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<TaskId>>(new Set());
+  const splitRef = useRef<HTMLDivElement>(null);
   const country = project.defaultCountry ?? "Korea";
   const tasks = project.tasks;
   const scheduledTasks = useMemo(() => cascadeTasks(tasks, workspace.ptos, country), [country, tasks, workspace.ptos]);
@@ -60,7 +69,39 @@ export function ProjectPlanner({ project, workspace, onProjectChange, onTasksCha
   const holidayDates = timelineDates.filter((date) => isHoliday(date, country));
   const actualRows = rows.map(actualTask);
   const plannerLocked = project.plannerLocked === true;
+  const splitStyle: SplitStyle = { "--task-pane-width": `${taskPanePercent}%`, "--panel-zoom": panelZoom };
   const setPlannerLocked = (locked: boolean) => onProjectChange((current) => ({ ...current, plannerLocked: locked }));
+
+  const resizeTaskPane = (clientX: number) => {
+    const bounds = splitRef.current?.getBoundingClientRect();
+    if (bounds === undefined) { return; }
+    setTaskPanePercent(Math.min(80, Math.max(20, ((clientX - bounds.left) / bounds.width) * 100)));
+  };
+
+  const resizeWithKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") { return; }
+    event.preventDefault();
+    setTaskPanePercent((current) => Math.min(80, Math.max(20, current + (event.key === "ArrowLeft" ? -2 : 2))));
+  };
+
+  const splitHandle = <div
+    className="split-resizer"
+    role="separator"
+    aria-label="Resize Tasks and Timeline panels"
+    aria-orientation="vertical"
+    aria-valuemin={20}
+    aria-valuemax={80}
+    aria-valuenow={Math.round(taskPanePercent)}
+    tabIndex={0}
+    onKeyDown={resizeWithKeyboard}
+    onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
+      if (event.nativeEvent.isTrusted) { event.currentTarget.setPointerCapture(event.pointerId); }
+      resizeTaskPane(event.clientX);
+    }}
+    onPointerMove={(event: PointerEvent<HTMLDivElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) { resizeTaskPane(event.clientX); }
+    }}
+  />;
 
   const setTaskDates = (change: TaskDateChange) => onTasksChange((current) => {
     const target = current.find((task) => task.id === change.id);
@@ -186,13 +227,14 @@ export function ProjectPlanner({ project, workspace, onProjectChange, onTasksCha
         {tab === "execution" ? <button className={showBaseline ? "text-button selected" : "text-button"} onClick={() => setShowBaseline((current) => !current)}>Show baseline</button> : null}
         <div className="tabs" role="tablist" aria-label="View"><button className={tab === "planner" ? "selected" : ""} onClick={() => setTab("planner")}>Planner</button><button className={tab === "execution" ? "selected" : ""} onClick={() => setTab("execution")}>Execution</button><button className={tab === "resources" ? "selected" : ""} onClick={() => setTab("resources")}>Resources</button></div>
         <div className="zoom" aria-label="Timeline zoom"><span>Zoom:</span>{(["day", "week", "month"] satisfies readonly Zoom[]).map((value) => <button key={value} className={zoom === value ? "selected" : ""} onClick={() => setZoom(value)}>{zoomLabels[value]}</button>)}</div>
+        {tab !== "resources" ? <div className="panel-zoom" aria-label="Panel zoom"><button className="icon-button" title="Zoom out" aria-label="Zoom out panels" disabled={panelZoom <= minPanelZoom} onClick={() => setPanelZoom((current) => Math.max(minPanelZoom, current - panelZoomStep))}><ZoomOut size={16} /></button><output aria-live="polite">{Math.round(panelZoom * 100)}%</output><button className="icon-button" title="Zoom in" aria-label="Zoom in panels" disabled={panelZoom >= maxPanelZoom} onClick={() => setPanelZoom((current) => Math.min(maxPanelZoom, current + panelZoomStep))}><ZoomIn size={16} /></button></div> : null}
       </div>
       {tab === "planner" ? (
-        <div className="split"><WbsTable rows={rows} allTasks={scheduledTasks} users={workspace.users} readOnly={plannerLocked} onToggle={toggle} onTitleChange={setTaskTitle} onStatusChange={setTaskStatus} onDateChange={(id, startDate, endDate) => setTaskDates({ id, startDate, endDate, preserveDuration: false })} onDurationChange={setTaskDuration} onProgressChange={setTaskProgress} onProgressColorChange={setTaskProgressColor} onAssigneeChange={setTaskAssignee} onDependencyChange={setDependencyIds} onTaskReorder={reorderTasks} onMoveUp={(id) => moveTask(id, "up")} onMoveDown={(id) => moveTask(id, "down")} onIndent={indentTask} onOutdent={outdentTask} onDelete={deleteTask} collapsedIds={collapsedIds} /><Gantt rows={rows} allTasks={scheduledTasks} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} readOnly={plannerLocked} onTaskDateChange={setTaskDates} /></div>
+        <div ref={splitRef} className="split" style={splitStyle}><WbsTable rows={rows} allTasks={scheduledTasks} users={workspace.users} readOnly={plannerLocked} onToggle={toggle} onTitleChange={setTaskTitle} onStatusChange={setTaskStatus} onDateChange={(id, startDate, endDate) => setTaskDates({ id, startDate, endDate, preserveDuration: false })} onDurationChange={setTaskDuration} onProgressChange={setTaskProgress} onProgressColorChange={setTaskProgressColor} onAssigneeChange={setTaskAssignee} onDependencyChange={setDependencyIds} onTaskReorder={reorderTasks} onMoveUp={(id) => moveTask(id, "up")} onMoveDown={(id) => moveTask(id, "down")} onIndent={indentTask} onOutdent={outdentTask} onDelete={deleteTask} collapsedIds={collapsedIds} />{splitHandle}<Gantt rows={rows} allTasks={scheduledTasks} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} readOnly={plannerLocked} onTaskDateChange={setTaskDates} /></div>
       ) : tab === "execution" ? (
-        <div className="split execution-split"><ExecutionTable rows={rows} actualRows={actualRows} allTasks={scheduledTasks} users={workspace.users} collapsedIds={collapsedIds} showBaseline={showBaseline} onToggle={toggle} onActualDateChange={(id, startDate, endDate) => setActualDates({ id, startDate, endDate, preserveDuration: false })} onActualDurationChange={setActualDuration} onActualStatusChange={setActualStatus} onActualProgressChange={setActualProgress} onActualProgressColorChange={setActualProgressColor} onActualAssigneeChange={setActualAssignee} onActualEstimatedHoursChange={setActualEstimatedHours} /><Gantt rows={actualRows} allTasks={scheduledTasks} baselineRows={showBaseline ? rows : []} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} onTaskDateChange={setActualDates} /></div>
+        <div ref={splitRef} className="split execution-split" style={splitStyle}><ExecutionTable rows={rows} actualRows={actualRows} allTasks={scheduledTasks} users={workspace.users} collapsedIds={collapsedIds} showBaseline={showBaseline} onToggle={toggle} onActualDateChange={(id, startDate, endDate) => setActualDates({ id, startDate, endDate, preserveDuration: false })} onActualDurationChange={setActualDuration} onActualStatusChange={setActualStatus} onActualProgressChange={setActualProgress} onActualProgressColorChange={setActualProgressColor} onActualAssigneeChange={setActualAssignee} onActualEstimatedHoursChange={setActualEstimatedHours} />{splitHandle}<Gantt rows={actualRows} allTasks={scheduledTasks} baselineRows={showBaseline ? rows : []} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} onTaskDateChange={setActualDates} /></div>
       ) : (
-        <ResourceHeatmap tasks={scheduledTasks} users={workspace.users} ptos={workspace.ptos} dates={dateRange("2026-07-01", 45)} />
+        <ResourceHeatmap title={resourceView === "planner" ? "Planner Resource Load" : "Execution Resource Load"} actions={<div className="resource-view-toggle" aria-label="Resource view"><button className={resourceView === "planner" ? "selected" : ""} onClick={() => setResourceView("planner")}>Planner</button><button className={resourceView === "execution" ? "selected" : ""} onClick={() => setResourceView("execution")}>Execution</button></div>} tasks={resourceView === "planner" ? scheduledTasks : allExecutionTasks} users={workspace.users} ptos={workspace.ptos} dates={dateRange("2026-07-01", 45)} />
       )}
     </section>
   );

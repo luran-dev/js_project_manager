@@ -1,12 +1,14 @@
+import type { ReactNode } from "react";
 import { isPtoDay } from "./schedule";
 import type { Pto, Task, User } from "./types";
 
 const shortDate = (date: string): string => date.slice(5).replace("-", "/");
 
-export function ResourceHeatmap({ tasks, users, ptos, dates }: { readonly tasks: readonly Task[]; readonly users: readonly User[]; readonly ptos: readonly Pto[]; readonly dates: readonly string[] }) {
+export function ResourceHeatmap({ title, actions, tasks, users, ptos, dates }: { readonly title: string; readonly actions?: ReactNode; readonly tasks: readonly Task[]; readonly users: readonly User[]; readonly ptos: readonly Pto[]; readonly dates: readonly string[] }) {
   return (
     <div className="resource-pane">
-      <div className="resource-grid" style={{ gridTemplateColumns: `140px repeat(${dates.length}, 54px)` }}>
+      <div className="resource-title"><span>{title}</span>{actions}</div>
+      <div className="resource-grid" style={{ gridTemplateColumns: `139px repeat(${dates.length}, 54.3px)` }}>
         <div className="resource-head">Resource</div>
         {dates.map((date) => <div className="resource-head" key={date}>{shortDate(date)}</div>)}
         {users.flatMap((user) => [

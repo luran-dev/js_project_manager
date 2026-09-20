@@ -1,5 +1,6 @@
 import { BarChart3 } from "lucide-react";
 import { useState } from "react";
+import { actualTask } from "./execution";
 import { buildResourceLoads } from "./resourceAnalytics";
 import type { UserId, Workspace } from "./types";
 
@@ -9,8 +10,10 @@ const loadRatio = (hours: number, capacity: number): number => capacity === 0 ? 
 const md = (hours: number, dailyCapacityHours: number): string => `${(hours / Math.max(1, dailyCapacityHours)).toFixed(1)} MD`;
 
 export function ResourceAnalyticsView({ workspace }: { readonly workspace: Workspace }) {
+  const [resourceView, setResourceView] = useState<"planner" | "execution">("planner");
   const [selectedUserId, setSelectedUserId] = useState<UserId>();
-  const loads = buildResourceLoads(workspace);
+  const analysisWorkspace = resourceView === "planner" ? workspace : { ...workspace, projects: workspace.projects.map((project) => ({ ...project, tasks: project.tasks.map(actualTask) })) };
+  const loads = buildResourceLoads(analysisWorkspace);
   const totalHours = loads.reduce((sum, load) => sum + load.totalHours, 0);
   const overallocated = loads.filter((load) => load.overallocatedDays > 0);
   const dates = loads[0]?.dailyLoads.map((load) => load.date) ?? [];
@@ -21,7 +24,8 @@ export function ResourceAnalyticsView({ workspace }: { readonly workspace: Works
   return (
     <section className="board analytics-board" aria-label="Resource workload and capacity">
       <div className="analytics-head">
-        <div><h2>Resource Workload</h2><p>{workspace.name} workspace allocation across {workspace.projects.length} project(s)</p></div>
+        <div><h2>Resource Workload</h2><p>{workspace.name} workspace allocation across {workspace.projects.length} project(s) · {resourceView === "planner" ? "Planner" : "Execution"} perspective</p></div>
+        <div className="perspective-toggle" aria-label="Resource workload perspective"><button className={resourceView === "planner" ? "selected" : ""} onClick={() => setResourceView("planner")}>Planner</button><button className={resourceView === "execution" ? "selected" : ""} onClick={() => setResourceView("execution")}>Execution</button></div>
         <div className="analytics-kpis"><span><strong>{totalHours}</strong> Assigned hours</span><span><strong>{overallocated.length}</strong> Overloaded resources</span><span><strong>{workspace.users.length}</strong> Resources</span></div>
       </div>
       <div className="analytics-grid">
@@ -69,7 +73,7 @@ export function ResourceAnalyticsView({ workspace }: { readonly workspace: Works
         <div className="analytics-panel wide">
           <h3>Project Staffing</h3>
           <div className="project-load-grid">
-            {workspace.projects.map((project) => (
+            {analysisWorkspace.projects.map((project) => (
               <div className="project-load-card" key={project.id}>
                 <strong>{project.name}</strong>
                 {loads.map((load) => {

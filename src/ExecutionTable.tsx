@@ -46,7 +46,7 @@ export function ExecutionTable({ rows, actualRows, allTasks, users, collapsedIds
     <div className="wbs-pane execution-table">
       <div className="wbs-title">Execution</div>
       <table>
-        <thead><tr><th>#</th><th>Task</th><th>Row</th><th>Status</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Progress</th><th>Assigned To</th><th>MD</th><th>Variance</th></tr></thead>
+        <thead><tr><th>#</th><th>Task</th><th>Track</th><th>Status</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Progress</th><th>Assigned To</th><th>MD</th><th>Variance</th></tr></thead>
         <tbody>
           {rows.flatMap((baseline, index) => {
             const actual = actualById.get(baseline.id) ?? baseline;

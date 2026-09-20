@@ -65,6 +65,12 @@ The app is a fixed-sidenav shell with a fixed top bar. The workspace body is the
 - Accessibility: labeled navigation buttons, visible focus.
 - Layout: fixed-sidenav-shell with bounded scroll body.
 
+### Authentication Recovery
+- Structure: the existing authentication card hosts request, six-digit verification, and new-password steps.
+- States: idle, submitting, validation error, and completed confirmation.
+- Accessibility: each step has a focused heading, labeled inputs, one-time-code autocomplete, and polite status announcements.
+- Layout: one compact form column that remains within the mobile viewport.
+
 ### Toolbar Controls
 - Structure: search input, filter button, segmented zoom control.
 - States: default, hover, active, focus.
@@ -82,6 +88,12 @@ The app is a fixed-sidenav shell with a fixed top bar. The workspace body is the
 - States: task hover, current zoom selected.
 - Accessibility: each bar has an aria label containing task, dates, and progress.
 - Layout: timeline canvas inside horizontal scroll.
+
+### Planner Split Pane
+- Structure: independently scrollable Tasks and Timeline panes separated by a draggable divider.
+- States: 70-120% shared content zoom, pointer drag, keyboard divider adjustment.
+- Accessibility: icon zoom controls have explicit labels; the divider is a focusable separator with a numeric value.
+- Layout: panes stay side by side; tablet widths preserve full working minima, while mobile lets the non-focused pane collapse to a narrow preview so either side can receive up to 80%.
 
 ### Resource Heatmap
 - Structure: user rows by date columns.

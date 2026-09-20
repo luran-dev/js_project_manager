@@ -156,7 +156,9 @@ type DragState = { readonly id: TaskId; readonly mode: "move" | "resize"; readon
 
 export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, zoom, scale, width, readOnly = false, baselineRows = [], onTaskDateChange }: GanttProps) {
   const [dragState, setDragState] = useState<DragState>();
-  const rowHeight = baselineRows.length > 0 ? 52 : 36;
+  const pairedRows = baselineRows.length > 0;
+  const rowHeight = pairedRows ? 73 : 36;
+  const actualTop = pairedRows ? 42 : 0;
   const rowById = new Map(rows.map((task, index) => [task.id, { task, index }]));
   const connectors = rows.flatMap((task, index) =>
     task.dependencyIds.flatMap((dependencyId) => {
@@ -219,11 +221,11 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
           const baseline = baselineRows.find((item) => item.id === task.id);
           return (
             <div key={task.id} className="gantt-row" style={{ top }}>
-              {baseline === undefined ? null : <span className="baseline-bar" style={{ left: daysBetween(minDate, baseline.startDate) * scale, width: taskWidth(baseline, minDate, scale) }} aria-label={`${task.title} baseline, ${baseline.startDate} to ${baseline.endDate}`} />}
+              {baseline === undefined ? null : <span className="baseline-bar" style={{ top: 13, left: daysBetween(minDate, baseline.startDate) * scale, width: taskWidth(baseline, minDate, scale) }} aria-label={`${task.title} baseline, ${baseline.startDate} to ${baseline.endDate}`} />}
               {milestone ? (
                 <span
                   className={`milestone ${statusClass(task.status)}${readOnly ? " locked" : ""}`}
-                  style={{ left }}
+                  style={{ top: actualTop + 3, left }}
                   aria-label={`${task.title}, ${task.startDate}`}
                   onPointerDown={(event) => { if (draggable) { startDrag(event, task, "move"); } }}
                   onPointerMove={(event) => updateDrag(event.clientX)}
@@ -233,7 +235,7 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
               ) : (
                 <span
                   className={`bar ${statusClass(task.status)}${children > 0 ? " summary" : ""}${readOnly ? " locked" : ""}`}
-                  style={{ left, width: barWidth }}
+                  style={{ top: actualTop, left, width: barWidth }}
                   aria-label={`${task.title}, ${task.startDate} to ${task.endDate}, ${task.progress}%`}
                   onPointerDown={(event) => { if (draggable) { startDrag(event, task, "move"); } }}
                   onPointerMove={(event) => updateDrag(event.clientX)}
@@ -256,7 +258,7 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
                   ) : null}
                 </span>
               )}
-              <span className="bar-label" style={{ left: left + barWidth + 8 }}>{milestone ? "Milestone" : `${task.title} - ${monthLabel(task.endDate)}`}</span>
+              <span className="bar-label" style={{ top: actualTop + 2, left: left + barWidth + 8 }}>{milestone ? "Milestone" : `${task.title} - ${monthLabel(task.endDate)}`}</span>
             </div>
           );
         })}
