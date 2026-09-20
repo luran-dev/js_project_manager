@@ -7,7 +7,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 port="${PORT:-5174}"
-host="${HOST:-127.0.0.1}"
+host="${HOST:-0.0.0.0}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -114,7 +114,7 @@ case "$command" in
     echo "Stopped ProjectVibe on port $port (pid $pid)."
     ;;
   *)
-    echo "Usage: scripts/server.sh <start|stop|status> [--port 5174] [--host 127.0.0.1]" >&2
+    echo "Usage: scripts/server.sh <start|stop|status> [--port 5174] [--host 0.0.0.0]" >&2
     exit 1
     ;;
 esac

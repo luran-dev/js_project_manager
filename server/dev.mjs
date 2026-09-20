@@ -4,7 +4,7 @@ const start = (command, args, env = {}) => spawn(command, args, { env: { ...proc
 const viteArgs = process.argv.slice(2).filter((arg) => arg !== "--");
 const hasArg = (name) => viteArgs.includes(name) || viteArgs.some((arg) => arg.startsWith(`${name}=`));
 const defaultViteArgs = [
-  ...(hasArg("--host") ? [] : ["--host", "127.0.0.1"]),
+  ...(hasArg("--host") ? [] : ["--host", "0.0.0.0"]),
   ...(hasArg("--port") ? [] : ["--port", "5174"]),
   ...(hasArg("--strictPort") ? [] : ["--strictPort"]),
 ];
