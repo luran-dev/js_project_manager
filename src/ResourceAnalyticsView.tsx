@@ -13,7 +13,7 @@ export function ResourceAnalyticsView({ workspace }: { readonly workspace: Works
   const [resourceView, setResourceView] = useState<"planner" | "execution">("planner");
   const [selectedUserId, setSelectedUserId] = useState<UserId>();
   const analysisWorkspace = resourceView === "planner" ? workspace : { ...workspace, projects: workspace.projects.map((project) => ({ ...project, tasks: project.tasks.map(actualTask) })) };
-  const loads = buildResourceLoads(analysisWorkspace);
+  const loads = buildResourceLoads(analysisWorkspace, resourceView);
   const totalHours = loads.reduce((sum, load) => sum + load.totalHours, 0);
   const overallocated = loads.filter((load) => load.overallocatedDays > 0);
   const dates = loads[0]?.dailyLoads.map((load) => load.date) ?? [];
