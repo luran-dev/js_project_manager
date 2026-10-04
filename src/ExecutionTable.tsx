@@ -1,7 +1,8 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { executionDelta } from "./execution";
-import { TASK_PROGRESS_COLORS, TASK_STATUSES, type Task, type TaskId, type TaskProgressColor, type TaskStatus, type User } from "./types";
+import { RiskBadge } from "./RiskBadge";
+import { TASK_PROGRESS_COLORS, TASK_STATUSES, type ProjectRisk, type Task, type TaskId, type TaskProgressColor, type TaskStatus, type User } from "./types";
 
 const childCount = (tasks: readonly Task[], id: TaskId): number => tasks.filter((task) => task.parentId === id).length;
 const levelOf = (task: Task, tasks: readonly Task[]): number => {
@@ -24,6 +25,8 @@ type Props = {
   readonly actualRows: readonly Task[];
   readonly allTasks: readonly Task[];
   readonly users: readonly User[];
+  readonly risks: readonly ProjectRisk[];
+  readonly onOpenRisk: (riskId: string) => void;
   readonly collapsedIds: ReadonlySet<TaskId>;
   readonly showBaseline: boolean;
   readonly onToggle: (id: TaskId) => void;
@@ -36,7 +39,7 @@ type Props = {
   readonly onActualEstimatedHoursChange: (id: TaskId, hours: number) => void;
 };
 
-export function ExecutionTable({ rows, actualRows, allTasks, users, collapsedIds, showBaseline, onToggle, onActualDateChange, onActualDurationChange, onActualStatusChange, onActualProgressChange, onActualProgressColorChange, onActualAssigneeChange, onActualEstimatedHoursChange }: Props) {
+export function ExecutionTable({ rows, actualRows, allTasks, users, risks, onOpenRisk, collapsedIds, showBaseline, onToggle, onActualDateChange, onActualDurationChange, onActualStatusChange, onActualProgressChange, onActualProgressColorChange, onActualAssigneeChange, onActualEstimatedHoursChange }: Props) {
   const [durationText, setDurationText] = useState<Record<TaskId, string>>({});
   const [progressText, setProgressText] = useState<Record<TaskId, string>>({});
   const [hoursText, setHoursText] = useState<Record<TaskId, string>>({});
@@ -57,6 +60,7 @@ export function ExecutionTable({ rows, actualRows, allTasks, users, collapsedIds
               <td className="task-name" style={{ paddingInlineStart: `${12 + levelOf(baseline, allTasks) * 22}px` }}>
                   {children > 0 ? <button className="icon-button" aria-expanded={!collapsedIds.has(baseline.id)} onClick={() => onToggle(baseline.id)}>{collapsedIds.has(baseline.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button> : <span className="indent-spacer" />}
                   <span className={children > 0 ? "summary-task" : ""}>{baseline.title}</span>
+                  <RiskBadge risks={risks} taskId={baseline.id} users={users} onOpenRisk={onOpenRisk} />
                 </td>
             );
             return [

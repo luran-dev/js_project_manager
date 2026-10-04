@@ -1,5 +1,6 @@
 export type TaskId = string;
 export type UserId = string;
+export type RiskId = string;
 
 export type Zoom = "day" | "week" | "month";
 export const PROJECT_COUNTRIES = ["Korea", "India", "China", "US"] as const;
@@ -10,6 +11,37 @@ export const TASK_PROGRESS_COLORS = ["grey", "yellow", "red", "green", "blue"] a
 export type TaskProgressColor = typeof TASK_PROGRESS_COLORS[number];
 export const WORKSPACE_ROLES = ["OWNER", "ADMIN", "MEMBER", "VIEWER"] as const;
 export type WorkspaceRole = typeof WORKSPACE_ROLES[number];
+export const RISK_CATEGORIES = ["SCHEDULE", "RESOURCE", "TECHNICAL", "QUALITY", "COST", "EXTERNAL"] as const;
+export type RiskCategory = typeof RISK_CATEGORIES[number];
+export const RISK_STATUSES = ["OPEN", "MITIGATING", "MONITORING", "OCCURRED", "ACCEPTED", "CLOSED"] as const;
+export type RiskStatus = typeof RISK_STATUSES[number];
+export const RISK_STRATEGIES = ["AVOID", "MITIGATE", "TRANSFER", "ACCEPT"] as const;
+export type RiskStrategy = typeof RISK_STRATEGIES[number];
+
+export type RiskHistoryEntry = {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly note: string;
+  readonly score: number;
+};
+
+export type ProjectRisk = {
+  readonly id: RiskId;
+  readonly title: string;
+  readonly description: string;
+  readonly category: RiskCategory;
+  readonly probability: number;
+  readonly impact: number;
+  readonly status: RiskStatus;
+  readonly strategy: RiskStrategy;
+  readonly ownerId?: UserId;
+  readonly taskIds: readonly TaskId[];
+  readonly identifiedDate: string;
+  readonly dueDate: string;
+  readonly mitigationPlan: string;
+  readonly contingencyPlan: string;
+  readonly history: readonly RiskHistoryEntry[];
+};
 
 export type User = {
   readonly id: UserId;
@@ -75,6 +107,7 @@ export type ProjectState = {
   readonly name: string;
   readonly defaultCountry?: ProjectCountry;
   readonly plannerLocked?: boolean;
+  readonly risks?: readonly ProjectRisk[];
   readonly tasks: readonly Task[];
 };
 

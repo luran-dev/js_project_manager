@@ -1,8 +1,9 @@
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2 } from "lucide-react";
 import type { DragEvent, PointerEvent } from "react";
 import { useState } from "react";
+import { RiskBadge } from "./RiskBadge";
 import { addDays, daysBetween } from "./schedule";
-import { TASK_PROGRESS_COLORS, TASK_STATUSES, type Task, type TaskId, type TaskProgressColor, type TaskStatus, type User, type Zoom } from "./types";
+import { TASK_PROGRESS_COLORS, TASK_STATUSES, type ProjectRisk, type Task, type TaskId, type TaskProgressColor, type TaskStatus, type User, type Zoom } from "./types";
 
 const monthLabel = (date: string): string =>
   new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00.000Z`));
@@ -53,6 +54,8 @@ type WbsProps = {
   readonly rows: readonly Task[];
   readonly allTasks: readonly Task[];
   readonly users: readonly User[];
+  readonly risks: readonly ProjectRisk[];
+  readonly onOpenRisk: (riskId: string) => void;
   readonly collapsedIds: ReadonlySet<TaskId>;
   readonly readOnly?: boolean;
   readonly onToggle: (id: TaskId) => void;
@@ -70,7 +73,7 @@ type WbsProps = {
   readonly onDelete: (id: TaskId) => void;
 };
 
-export function WbsTable({ rows, allTasks, users, collapsedIds, readOnly = false, onToggle, onTitleChange, onStatusChange, onDateChange, onDurationChange, onProgressChange, onProgressColorChange, onAssigneeChange, onDependencyChange, onTaskReorder, onMoveUp, onMoveDown, onIndent, onOutdent, onDelete }: WbsProps) {
+export function WbsTable({ rows, allTasks, users, risks, onOpenRisk, collapsedIds, readOnly = false, onToggle, onTitleChange, onStatusChange, onDateChange, onDurationChange, onProgressChange, onProgressColorChange, onAssigneeChange, onDependencyChange, onTaskReorder, onMoveUp, onMoveDown, onIndent, onOutdent, onDelete }: WbsProps) {
   const [dependencyText, setDependencyText] = useState<Record<TaskId, string>>({}); const [durationText, setDurationText] = useState<Record<TaskId, string>>({}); const [progressText, setProgressText] = useState<Record<TaskId, string>>({});
   const [draggedTaskId, setDraggedTaskId] = useState<TaskId>();
   const shortIds = taskCodeById(allTasks);
@@ -114,6 +117,7 @@ export function WbsTable({ rows, allTasks, users, collapsedIds, readOnly = false
 	                <td className="task-name" style={{ paddingInlineStart: `${12 + levelOf(task, allTasks) * 22}px` }}>
 	                  {children > 0 ? <button className="icon-button" aria-expanded={!collapsedIds.has(task.id)} onClick={() => onToggle(task.id)}>{collapsedIds.has(task.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button> : <span className="indent-spacer" />}
                   <input className={`task-title-input${children > 0 ? " summary-task" : ""}`} aria-label={`${task.title} task name`} value={task.title} disabled={readOnly} onChange={(event) => onTitleChange(task.id, event.target.value)} />
+	                  <RiskBadge risks={risks} taskId={task.id} users={users} onOpenRisk={onOpenRisk} />
 		                  <span className="hierarchy-actions">
 		                    <button className="icon-button" aria-label={`Outdent ${task.title}`} disabled={readOnly || task.parentId === undefined} onClick={() => onOutdent(task.id)}><ChevronLeft size={14} /></button>
 		                    <button className="icon-button" aria-label={`Indent ${task.title}`} disabled={readOnly || index === 0} onClick={() => onIndent(task.id)}><ChevronRight size={14} /></button>

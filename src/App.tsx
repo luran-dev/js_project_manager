@@ -1,10 +1,11 @@
-import { BarChart3, ChevronDown, ClipboardList, Folder, LogOut, Settings, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, ChevronDown, ClipboardList, Folder, LogOut, Settings, ShieldAlert, UserRound, UsersRound } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ProjectManagerModal } from "./ProjectManagerModal";
 import { ProjectPlanner } from "./ProjectPlanner";
 import { PasswordResetFlow } from "./PasswordResetFlow";
 import { ResourceAnalyticsView } from "./ResourceAnalyticsView";
 import { ResourceManagerModal } from "./ResourceManagerModal";
+import { RiskRegister } from "./RiskRegister";
 import { WorkspaceManagerModal } from "./WorkspaceManagerModal";
 import { projectVibeRepository, type AppSnapshot } from "./repository";
 import { addWorkingDays } from "./schedule";
@@ -17,7 +18,7 @@ const clearAssignee = (task: Task): Task => {
   return rest;
 };
 const hasChildren = (tasks: readonly Task[], id: string): boolean => tasks.some((task) => task.parentId === id);
-type AppView = "planner" | "reports";
+type AppView = "planner" | "reports" | "risks";
 type AuthStatus = "loading" | "signedOut" | "signedIn";
 
 export function App() {
@@ -36,6 +37,7 @@ export function App() {
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [showResourceManager, setShowResourceManager] = useState(false);
   const [view, setView] = useState<AppView>("planner");
+  const [focusedRiskId, setFocusedRiskId] = useState<string>();
   const workspaces = snapshot?.workspaces ?? [];
   const currentUserWorkspaceIds = useMemo(() => snapshot?.currentUser.workspaceMemberships.map((membership) => membership.workspaceId) ?? [], [snapshot]);
   const userWorkspaces = useMemo(() => workspaces.filter((item) => currentUserWorkspaceIds.includes(item.id)), [currentUserWorkspaceIds, workspaces]);
@@ -139,7 +141,11 @@ export function App() {
   });
   const updateWorkspace = (updater: (workspace: Workspace) => Workspace) => saveSnapshot((current) => ({ ...current, workspaces: current.workspaces.map((item) => (item.id === workspace.id ? updater(item) : item)) }));
   const updateProject = (projectUpdater: (project: ProjectState) => ProjectState) => updateWorkspace((current) => ({ ...current, projects: current.projects.map((item) => (item.id === project.id ? projectUpdater(item) : item)) }));
-  const setProjectTasks = (updater: (tasks: readonly Task[]) => readonly Task[]) => updateProject((current) => ({ ...current, tasks: updater(current.tasks) }));
+  const setProjectTasks = (updater: (tasks: readonly Task[]) => readonly Task[]) => updateProject((current) => {
+    const tasks = updater(current.tasks);
+    const taskIds = new Set(tasks.map((task) => task.id));
+    return { ...current, tasks, ...(current.risks === undefined ? {} : { risks: current.risks.map((risk) => ({ ...risk, taskIds: risk.taskIds.filter((id) => taskIds.has(id)) })) }) };
+  });
 
   const selectWorkspace = (id: string) => {
     const nextWorkspace = userWorkspaces.find((item) => item.id === id);
@@ -182,7 +188,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar"><div className="brand" aria-label="ProjectVibe home"><span className="brand-mark"><BarChart3 size={18} /></span><strong>ProjectVibe</strong></div><div className="profile"><span className="avatar"><UserRound size={18} /></span> {currentUser.name} <ChevronDown size={14} /></div></header>
-      <nav className="side-rail" aria-label="Primary navigation"><button className={view === "planner" ? "rail-button active" : "rail-button"} aria-label="Projects" onClick={() => setView("planner")}><Folder size={20} /></button><button className="rail-button" aria-label="Tasks"><ClipboardList size={20} /></button><button className={view === "reports" ? "rail-button active" : "rail-button"} aria-label="Reports" onClick={() => setView("reports")}><BarChart3 size={20} /></button><button className="rail-button" aria-label="Settings"><Settings size={20} /></button><button className="rail-button bottom" aria-label="Sign out" onClick={signOut}><LogOut size={20} /></button></nav>
+      <nav className="side-rail" aria-label="Primary navigation"><button className={view === "planner" ? "rail-button active" : "rail-button"} aria-label="Projects" onClick={() => setView("planner")}><Folder size={20} /></button><button className="rail-button" aria-label="Tasks"><ClipboardList size={20} /></button><button className={view === "risks" ? "rail-button active" : "rail-button"} aria-label="Risks" onClick={() => { setFocusedRiskId(undefined); setView("risks"); }}><ShieldAlert size={20} /></button><button className={view === "reports" ? "rail-button active" : "rail-button"} aria-label="Reports" onClick={() => setView("reports")}><BarChart3 size={20} /></button><button className="rail-button" aria-label="Settings"><Settings size={20} /></button><button className="rail-button bottom" aria-label="Sign out" onClick={signOut}><LogOut size={20} /></button></nav>
 
       <main className="workspace">
         <section className="context-bar" aria-label="Workspace and project context">
@@ -207,7 +213,7 @@ export function App() {
           saveResources(users, ptos, deletedResourceIds);
           setShowResourceManager(false);
         }} /> : null}
-        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : <ProjectPlanner project={project} workspace={workspace} onWorkspaceChange={updateWorkspace} onProjectChange={updateProject} onTasksChange={setProjectTasks} />}
+        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : view === "risks" ? <RiskRegister projectName={project.name} risks={project.risks ?? []} tasks={project.tasks} users={workspace.users} focusedRiskId={focusedRiskId} onChange={(risks) => updateProject((current) => ({ ...current, risks }))} /> : <ProjectPlanner project={project} workspace={workspace} onWorkspaceChange={updateWorkspace} onProjectChange={updateProject} onTasksChange={setProjectTasks} onOpenRisk={(riskId) => { setFocusedRiskId(riskId); setView("risks"); }} />}
       </main>
     </div>
   );

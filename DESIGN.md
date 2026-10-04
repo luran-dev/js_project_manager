@@ -101,6 +101,12 @@ The app is a fixed-sidenav shell with a fixed top bar. The workspace body is the
 - Accessibility: cells expose assignment/PTO labels.
 - Layout: compact matrix with fixed name column.
 
+### Risk Register
+- Structure: project-level register table, severity/status filters, expandable response details, and a focused edit dialog.
+- States: low, medium, high, critical, open, occurred, and closed; linked Tasks expose compact active-risk badges.
+- Accessibility: filters and actions are explicitly labeled, expandable rows announce state, and severity is always written as text rather than conveyed by color alone.
+- Layout: dense table on desktop with horizontal containment on tablet/mobile; the edit form collapses from two columns to one.
+
 ## 6. Motion & Interaction
 
 Micro interactions use 120ms ease-out for hover and active feedback. Schedule changes are immediate with no decorative animation. Reduced motion receives the same layout without transitions.
