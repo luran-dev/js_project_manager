@@ -57,11 +57,11 @@ export function ExecutionTable({ rows, actualRows, allTasks, users, risks, onOpe
             const editable = children === 0;
             const delta = executionDelta({ ...baseline, actualEndDate: actual.endDate, actualEstimatedHours: actual.estimatedHours });
             const taskCell = (
-              <td className="task-name" style={{ paddingInlineStart: `${12 + levelOf(baseline, allTasks) * 22}px` }}>
-                  {children > 0 ? <button className="icon-button" aria-expanded={!collapsedIds.has(baseline.id)} onClick={() => onToggle(baseline.id)}>{collapsedIds.has(baseline.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button> : <span className="indent-spacer" />}
+              <td className="task-name"><div className="task-name-content" style={{ paddingInlineStart: `${Math.min(levelOf(baseline, allTasks), 4) * 12}px` }}>
+                  {children > 0 ? <button className="icon-button" aria-label={`${collapsedIds.has(baseline.id) ? "Expand" : "Collapse"} ${baseline.title}`} aria-expanded={!collapsedIds.has(baseline.id)} onClick={() => onToggle(baseline.id)}>{collapsedIds.has(baseline.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button> : <span className="indent-spacer" />}
                   <span className={children > 0 ? "summary-task" : ""}>{baseline.title}</span>
                   <RiskBadge risks={risks} taskId={baseline.id} users={users} onOpenRisk={onOpenRisk} />
-                </td>
+                </div></td>
             );
             return [
               ...(showBaseline ? [<tr key={`${baseline.id}-planned`} className="planned-row">
@@ -79,7 +79,7 @@ export function ExecutionTable({ rows, actualRows, allTasks, users, risks, onOpe
               </tr>] : []),
               <tr key={`${baseline.id}-actual`} className="actual-row">
                 <td>{showBaseline ? "" : index + 1}</td>
-                {showBaseline ? <td /> : taskCell}
+                {showBaseline ? <td className="task-name" /> : taskCell}
                 <td><span className="row-kind actual">Actual</span></td>
                 <td><select className="status-select" value={actual.status} aria-label={`${baseline.title} actual status`} onChange={(event) => onActualStatusChange(baseline.id, parseStatus(event.target.value))}>{TASK_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></td>
                 <td><input className="date-input" type="date" value={actual.startDate} disabled={!editable} aria-label={`${baseline.title} actual start date`} onChange={(event) => onActualDateChange(baseline.id, event.target.value, actual.endDate)} /></td>
@@ -100,7 +100,7 @@ export function ExecutionTable({ rows, actualRows, allTasks, users, risks, onOpe
                   setHoursText((current) => ({ ...current, [baseline.id]: value }));
                   if (/^\d+$/.test(value)) { onActualEstimatedHoursChange(baseline.id, Number(value) * 8); }
                 }} /></td>
-                <td className={delta.delayDays > 0 || delta.mdDelta > 0 ? "variance bad" : "variance"}>{delta.delayDays}/{delta.mdDelta} MD</td>
+                <td className={delta.delayDays > 0 || delta.mdDelta > 0 ? "variance bad" : "variance"}>{delta.delayDays}d / {delta.mdDelta} MD</td>
               </tr>,
             ];
           })}

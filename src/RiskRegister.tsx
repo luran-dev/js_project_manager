@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight, Pencil, Plus, ShieldAlert, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { Modal } from "./Modal";
 import { RISK_LEVELS, riskLevel, riskScore, taskDisplayPath, type RiskLevel } from "./risk";
 import { RISK_CATEGORIES, RISK_STATUSES, RISK_STRATEGIES, type ProjectRisk, type RiskCategory, type RiskStatus, type RiskStrategy, type Task, type User } from "./types";
 
@@ -53,8 +54,7 @@ function RiskEditor({ risk, tasks, users, onCancel, onSave }: RiskEditorProps) {
   };
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="resource-modal risk-modal" role="dialog" aria-modal="true" aria-labelledby="risk-editor-title">
+    <Modal title={risk === undefined ? "Register risk" : "Update risk"} className="risk-modal" onClose={onCancel}>
         <header className="modal-header"><h2 id="risk-editor-title">{risk === undefined ? "Register Risk" : "Update Risk"}</h2><button className="icon-button" aria-label="Close risk editor" onClick={onCancel}><X size={18} /></button></header>
         <form onSubmit={submit}>
           <div className="risk-form-grid">
@@ -75,8 +75,7 @@ function RiskEditor({ risk, tasks, users, onCancel, onSave }: RiskEditorProps) {
           </div>
           <footer className="modal-actions"><button className="text-button" type="button" onClick={onCancel}>Cancel</button><button className="text-button primary" type="submit">Save Risk</button></footer>
         </form>
-      </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -106,6 +105,8 @@ export function RiskRegister({ projectName, risks, tasks, users, focusedRiskId, 
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | undefined>(focusedRiskId);
   const [editing, setEditing] = useState<ProjectRisk | "new">();
+  const [deleting, setDeleting] = useState<ProjectRisk>();
+  const expandedRisk = risks.find((risk) => risk.id === expandedId);
   const filtered = useMemo(() => risks.filter((risk) => (status === "ALL" || risk.status === status) && (level === "ALL" || riskLevel(riskScore(risk)) === level) && `${risk.title} ${risk.description}`.toLowerCase().includes(query.trim().toLowerCase())).sort((left, right) => riskScore(right) - riskScore(left)), [level, query, risks, status]);
   const open = risks.filter((risk) => risk.status !== "CLOSED");
   const high = open.filter((risk) => riskScore(risk) >= 10);
@@ -116,7 +117,7 @@ export function RiskRegister({ projectName, risks, tasks, users, focusedRiskId, 
     setLevel("ALL");
     setQuery("");
     setExpandedId(focusedRiskId);
-    const frame = window.requestAnimationFrame(() => document.getElementById(`risk-row-${focusedRiskId}`)?.scrollIntoView({ block: "center" }));
+    const frame = window.requestAnimationFrame(() => document.getElementById("risk-details")?.scrollIntoView({ block: "nearest" }));
     return () => window.cancelAnimationFrame(frame);
   }, [focusedRiskId, risks]);
 
@@ -140,19 +141,29 @@ export function RiskRegister({ projectName, risks, tasks, users, focusedRiskId, 
       <div className="risk-table-wrap">
         <table className="risk-table">
           <thead><tr><th aria-label="Expand" /><th>Risk</th><th>Level</th><th>Score</th><th>Status</th><th>Owner</th><th>Target</th><th>Tasks</th><th aria-label="Actions" /></tr></thead>
-          <tbody>{filtered.length === 0 ? <tr><td colSpan={9} className="risk-empty">No risks match the current filters.</td></tr> : filtered.flatMap((risk) => {
+          <tbody>{filtered.length === 0 ? <tr><td colSpan={9} className="risk-empty">No risks match the current filters.</td></tr> : filtered.map((risk) => {
             const expanded = expandedId === risk.id;
             const currentLevel = riskLevel(riskScore(risk));
             const linkedTasks = tasks.filter((task) => risk.taskIds.includes(task.id));
-            return [<tr key={risk.id} id={`risk-row-${risk.id}`} className={focusedRiskId === risk.id ? "focused-risk-row" : ""}>
+            return <tr key={risk.id} id={`risk-row-${risk.id}`} className={focusedRiskId === risk.id ? "focused-risk-row" : ""}>
               <td><button className="icon-button" aria-label={`${expanded ? "Collapse" : "Expand"} ${risk.title}`} aria-expanded={expanded} onClick={() => setExpandedId(expanded ? undefined : risk.id)}>{expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</button></td>
               <td><strong>{risk.title}</strong><small>{risk.category}</small></td>
               <td><span className={`risk-level risk-${currentLevel.toLowerCase()}`}>{currentLevel}</span></td><td className="risk-score">{riskScore(risk)}</td><td>{risk.status}</td><td>{users.find((user) => user.id === risk.ownerId)?.name ?? "Unassigned"}</td><td>{risk.dueDate}</td><td>{linkedTasks.length}</td>
-              <td className="risk-actions"><button className="icon-button" aria-label={`Edit ${risk.title}`} onClick={() => setEditing(risk)}><Pencil size={14} /></button><button className="icon-button danger" aria-label={`Delete ${risk.title}`} onClick={() => onChange(risks.filter((item) => item.id !== risk.id))}><Trash2 size={14} /></button></td>
-            </tr>, ...(expanded ? [<tr key={`${risk.id}-detail`} className="risk-detail-row"><td colSpan={9}><RiskDetails risk={risk} tasks={tasks} users={users} /></td></tr>] : [])];
+              <td className="risk-actions"><button className="icon-button" aria-label={`Edit ${risk.title}`} onClick={() => setEditing(risk)}><Pencil size={14} /></button><button className="icon-button danger" aria-label={`Delete ${risk.title}`} onClick={() => setDeleting(risk)}><Trash2 size={14} /></button></td>
+            </tr>;
           })}</tbody>
         </table>
       </div>
+      <div className="risk-cards">
+        {filtered.length === 0 ? <p className="risk-empty">No risks match the current filters.</p> : filtered.map((risk) => <article className="risk-card" key={risk.id}>
+          <div className="risk-card-head"><h3>{risk.title}</h3><span className={`risk-level risk-${riskLevel(riskScore(risk)).toLowerCase()}`}>{riskLevel(riskScore(risk))}</span></div>
+          <p>{risk.category} · {risk.status}</p>
+          <div className="risk-card-meta"><span>Score {riskScore(risk)}</span><span>Due {risk.dueDate}</span><span>{users.find((user) => user.id === risk.ownerId)?.name ?? "Unassigned"}</span></div>
+          <div className="risk-card-actions"><button className="text-button" aria-expanded={expandedId === risk.id} onClick={() => setExpandedId(expandedId === risk.id ? undefined : risk.id)}>{expandedId === risk.id ? "Hide details" : "View details"}</button><button className="icon-button" aria-label={`Edit ${risk.title}`} onClick={() => setEditing(risk)}><Pencil size={16} /></button><button className="icon-button danger" aria-label={`Delete ${risk.title}`} onClick={() => setDeleting(risk)}><Trash2 size={16} /></button></div>
+        </article>)}
+      </div>
+      {expandedRisk && <section id="risk-details" className="risk-expanded"><div className="risk-expanded-header"><h3>{expandedRisk.title}</h3><button className="icon-button" aria-label="Close risk details" onClick={() => setExpandedId(undefined)}><X size={18} /></button></div><RiskDetails risk={expandedRisk} tasks={tasks} users={users} /></section>}
+      {deleting && <Modal title="Delete risk" className="task-actions-dialog" onClose={() => setDeleting(undefined)}><header className="modal-header"><h2>Delete risk?</h2></header><div className="task-actions-content"><p>{deleting.title}</p><p className="dialog-description">This removes the risk and its review history.</p></div><footer className="modal-actions"><button className="text-button" onClick={() => setDeleting(undefined)}>Keep risk</button><button className="text-button danger" onClick={() => { onChange(risks.filter((risk) => risk.id !== deleting.id)); setDeleting(undefined); }}>Delete risk</button></footer></Modal>}
       {editing === undefined ? null : editing === "new" ? <RiskEditor tasks={tasks} users={users} onCancel={() => setEditing(undefined)} onSave={save} /> : <RiskEditor risk={editing} tasks={tasks} users={users} onCancel={() => setEditing(undefined)} onSave={save} />}
     </section>
   );

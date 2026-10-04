@@ -1,5 +1,6 @@
 import { Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { Modal } from "./Modal";
 import { PROJECT_COUNTRIES, type ProjectCountry, type ProjectState } from "./types";
 
 type Props = {
@@ -34,8 +35,7 @@ export function ProjectManagerModal({ projects, activeProjectId, defaultCountry,
   };
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="resource-modal entity-modal" role="dialog" aria-modal="true" aria-label="Manage projects">
+    <Modal title="Manage projects" className="entity-modal" onClose={onCancel}>
         <header className="modal-header">
           <h2>Manage Projects</h2>
           <button className="icon-button" aria-label="Close projects" onClick={onCancel}><X size={18} /></button>
@@ -58,7 +58,6 @@ export function ProjectManagerModal({ projects, activeProjectId, defaultCountry,
           <button className="text-button" onClick={onCancel}>Cancel</button>
           <button className="text-button primary" onClick={() => onConfirm(draftProjects, selectedId)}>Confirm</button>
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }

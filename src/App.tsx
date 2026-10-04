@@ -1,4 +1,4 @@
-import { BarChart3, ChevronDown, ClipboardList, Folder, LogOut, Settings, ShieldAlert, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, ChevronDown, Folder, LogOut, Palette, Settings, ShieldAlert, UserRound, UsersRound } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ProjectManagerModal } from "./ProjectManagerModal";
 import { ProjectPlanner } from "./ProjectPlanner";
@@ -7,6 +7,8 @@ import { ResourceAnalyticsView } from "./ResourceAnalyticsView";
 import { ResourceManagerModal } from "./ResourceManagerModal";
 import { RiskRegister } from "./RiskRegister";
 import { WorkspaceManagerModal } from "./WorkspaceManagerModal";
+import { AppearanceDialog } from "./AppearanceDialog";
+import { useTheme } from "./theme";
 import { projectVibeRepository, type AppSnapshot } from "./repository";
 import { addWorkingDays } from "./schedule";
 import type { ProjectState, Pto, Task, User, UserId, Workspace } from "./types";
@@ -22,6 +24,9 @@ type AppView = "planner" | "reports" | "risks";
 type AuthStatus = "loading" | "signedOut" | "signedIn";
 
 export function App() {
+  const { preference, changeTheme, storageAvailable } = useTheme();
+  const [showAppearance, setShowAppearance] = useState(false);
+  const [contextExpanded, setContextExpanded] = useState(false);
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [authMode, setAuthMode] = useState<"login" | "register" | "reset">("login");
@@ -91,6 +96,9 @@ export function App() {
     setAuthStatus("signedOut");
   };
 
+  const appearanceButton = <button className="text-button appearance-trigger" title="Customize colors and display mode" onClick={() => setShowAppearance(true)}><Palette size={17} /><span>Appearance</span></button>;
+  const appearanceDialog = showAppearance ? <AppearanceDialog preference={preference} onChange={changeTheme} storageAvailable={storageAvailable} onClose={() => setShowAppearance(false)} /> : null;
+
   if (authStatus === "loading") {
     return <div className="auth-shell"><div className="auth-card"><strong>ProjectVibe</strong><p>Loading workspace...</p></div></div>;
   }
@@ -98,6 +106,8 @@ export function App() {
   if (snapshot === null) {
     return (
       <div className="auth-shell">
+        <div className="auth-appearance">{appearanceButton}</div>
+        {appearanceDialog}
         <section className="auth-card" aria-labelledby="auth-title">
           <div className="brand auth-brand" aria-label="ProjectVibe home"><span className="brand-mark"><BarChart3 size={18} /></span><strong>ProjectVibe</strong></div>
           {authMode === "reset" ? <PasswordResetFlow onCancel={() => setAuthMode("login")} onComplete={() => { setAuthMode("login"); setAuthMessage("Password updated. Sign in with your new password."); }} /> : <>
@@ -187,14 +197,17 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar"><div className="brand" aria-label="ProjectVibe home"><span className="brand-mark"><BarChart3 size={18} /></span><strong>ProjectVibe</strong></div><div className="profile"><span className="avatar"><UserRound size={18} /></span> {currentUser.name} <ChevronDown size={14} /></div></header>
-      <nav className="side-rail" aria-label="Primary navigation"><button className={view === "planner" ? "rail-button active" : "rail-button"} aria-label="Projects" onClick={() => setView("planner")}><Folder size={20} /></button><button className="rail-button" aria-label="Tasks"><ClipboardList size={20} /></button><button className={view === "risks" ? "rail-button active" : "rail-button"} aria-label="Risks" onClick={() => { setFocusedRiskId(undefined); setView("risks"); }}><ShieldAlert size={20} /></button><button className={view === "reports" ? "rail-button active" : "rail-button"} aria-label="Reports" onClick={() => setView("reports")}><BarChart3 size={20} /></button><button className="rail-button" aria-label="Settings"><Settings size={20} /></button><button className="rail-button bottom" aria-label="Sign out" onClick={signOut}><LogOut size={20} /></button></nav>
+      <a className="skip-link" href="#workspace">Skip to workspace</a>
+      <header className="topbar"><div className="brand" aria-label="ProjectVibe"><span className="brand-mark"><BarChart3 size={18} /></span><strong>ProjectVibe</strong></div><div className="topbar-actions">{appearanceButton}<div className="profile"><span className="avatar"><UserRound size={18} /></span><span>{currentUser.name}</span></div></div></header>
+      <nav className="side-rail" aria-label="Primary navigation"><button className={view === "planner" ? "rail-button active" : "rail-button"} aria-label="Projects" aria-current={view === "planner" ? "page" : undefined} onClick={() => setView("planner")}><Folder size={20} /><span>Projects</span></button><button className={view === "risks" ? "rail-button active" : "rail-button"} aria-label="Risks" aria-current={view === "risks" ? "page" : undefined} onClick={() => { setFocusedRiskId(undefined); setView("risks"); }}><ShieldAlert size={20} /><span>Risks</span></button><button className={view === "reports" ? "rail-button active" : "rail-button"} aria-label="Reports" aria-current={view === "reports" ? "page" : undefined} onClick={() => setView("reports")}><BarChart3 size={20} /><span>Reports</span></button><button className="rail-button bottom" aria-label="Sign out" onClick={signOut}><LogOut size={20} /><span>Sign out</span></button></nav>
+      {appearanceDialog}
 
-      <main className="workspace">
-        <section className="context-bar" aria-label="Workspace and project context">
+      <main className="workspace" id="workspace" tabIndex={-1}>
+        <section className={`context-bar${contextExpanded ? " expanded" : ""}`} aria-label="Workspace and project context">
+          <button className="context-toggle" aria-expanded={contextExpanded} onClick={() => setContextExpanded((current) => !current)}><span><small>{workspace.name}</small><strong>{project.name}</strong></span><ChevronDown size={18} /></button>
           <div className="context-field"><span>Workspace</span><div className="select-action"><select aria-label="Workspace selector" value={workspace.id} onChange={(event) => selectWorkspace(event.target.value)}>{userWorkspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="context-icon-button" title="Manage workspaces" aria-label="Manage workspaces" onClick={() => setShowWorkspaceManager(true)}><Settings size={15} /></button></div></div>
           <div className="context-field"><span>Project</span><div className="select-action"><select aria-label="Project selector" value={project.id} onChange={(event) => setProjectId(event.target.value)}>{workspace.projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="context-icon-button" title="Manage projects" aria-label="Manage projects" onClick={() => setShowProjectManager(true)}><Settings size={15} /></button></div></div>
-          <button className="text-button resource-action" title="Manage workspace resources and PTO" aria-label="Manage workspace resources and PTO" onClick={() => setShowResourceManager(true)}><UsersRound size={16} /> Resources</button>
+          <button className="text-button resource-action" title="Manage workspace resources and PTO" aria-label="Manage workspace resources and PTO" onClick={() => setShowResourceManager(true)}><UsersRound size={16} /> Team & PTO</button>
           <div className="context-metric"><span>Country</span><strong>{project.defaultCountry ?? "Korea"}</strong></div>
           <div className="context-metric"><span>Resources</span><strong>{workspace.users.length}</strong></div>
           <div className="context-metric"><span>Window</span><strong>{shortDate(windowStart)} - {shortDate(windowEnd)}</strong></div>

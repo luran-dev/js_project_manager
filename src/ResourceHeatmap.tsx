@@ -7,8 +7,8 @@ const shortDate = (date: string): string => date.slice(5).replace("-", "/");
 export function ResourceHeatmap({ users, ptos, capacities, dates, onCapacityChange }: { readonly users: readonly User[]; readonly ptos: readonly Pto[]; readonly capacities: readonly ResourceCapacity[] | undefined; readonly dates: readonly string[]; readonly onCapacityChange: (userId: UserId, date: string, md: number) => void }) {
   return (
     <div className="resource-pane">
-      <div className="resource-title"><span>Resources Capacity</span></div>
-      <div className="resource-grid" style={{ gridTemplateColumns: `139px repeat(${dates.length}, 54.3px)` }}>
+      <div className="resource-title"><span>Daily capacity</span></div>
+      <div className="resource-grid" style={{ gridTemplateColumns: `150px repeat(${dates.length}, 88px)` }}>
         <div className="resource-head">Resource</div>
         {dates.map((date) => <div className="resource-head" key={date}>{shortDate(date)}</div>)}
         {users.flatMap((user) => [

@@ -1,5 +1,6 @@
 import { Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { Modal } from "./Modal";
 import type { ProjectCountry, ProjectState, Workspace } from "./types";
 
 type Props = {
@@ -36,8 +37,7 @@ export function WorkspaceManagerModal({ workspaces, activeWorkspaceId, defaultCo
   };
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="resource-modal entity-modal" role="dialog" aria-modal="true" aria-label="Manage workspaces">
+    <Modal title="Manage workspaces" className="entity-modal" onClose={onCancel}>
         <header className="modal-header">
           <h2>Manage Workspaces</h2>
           <button className="icon-button" aria-label="Close workspaces" onClick={onCancel}><X size={18} /></button>
@@ -59,7 +59,6 @@ export function WorkspaceManagerModal({ workspaces, activeWorkspaceId, defaultCo
           <button className="text-button" onClick={onCancel}>Cancel</button>
           <button className="text-button primary" onClick={() => onConfirm(draftWorkspaces, selectedId)}>Confirm</button>
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }

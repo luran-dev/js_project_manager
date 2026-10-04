@@ -1,6 +1,6 @@
 import { Lock, Plus, Search, Unlock, ZoomIn, ZoomOut } from "lucide-react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Gantt, WbsTable } from "./components";
 import type { TaskDateChange } from "./components";
 import { ExecutionTable } from "./ExecutionTable";
@@ -10,6 +10,13 @@ import { addDays, addWorkingDays, cascadeTasks, daysBetween, isHoliday, visibleT
 import type { ProjectState, Task, TaskId, TaskProgressColor, TaskStatus, UserId, Workspace, Zoom } from "./types";
 
 const zoomScale: Record<Zoom, number> = { day: 56, week: 12, month: 7 };
+const compactQuery = "(max-width: 900px)";
+const subscribeCompact = (notify: () => void) => {
+  const media = window.matchMedia(compactQuery);
+  media.addEventListener("change", notify);
+  return () => media.removeEventListener("change", notify);
+};
+const isCompact = () => window.matchMedia(compactQuery).matches;
 const zoomLabels: Record<Zoom, string> = { day: "Day", week: "Week", month: "Month" };
 const panelZoomStep = 0.1;
 const minPanelZoom = 0.7;
@@ -46,6 +53,9 @@ export function ProjectPlanner({ project, workspace, onWorkspaceChange, onProjec
   const [taskPanePercent, setTaskPanePercent] = useState(54);
   const [tab, setTab] = useState<"planner" | "execution" | "resources">("planner");
   const [showBaseline, setShowBaseline] = useState(true);
+  const [pane, setPane] = useState<"split" | "tasks" | "timeline">("split");
+  const compact = useSyncExternalStore(subscribeCompact, isCompact);
+  const activePane = compact && pane === "split" ? "tasks" : pane;
   const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<TaskId>>(new Set());
   const splitRef = useRef<HTMLDivElement>(null);
   const country = project.defaultCountry ?? "Korea";
@@ -224,15 +234,15 @@ export function ProjectPlanner({ project, workspace, onWorkspaceChange, onProjec
   });
 
   return (
-    <section className="board">
+    <section className="board planner-board" data-pane={activePane}>
+      <div className="board-heading"><div><span className="eyebrow">Project workspace</span><h1>{project.name}</h1><p>{tasks.length} tasks <span aria-hidden="true">·</span> {country} working calendar</p></div><div className="tabs" role="group" aria-label="Project view"><button aria-pressed={tab === "planner"} className={tab === "planner" ? "selected" : ""} onClick={() => setTab("planner")}>Planner</button><button aria-pressed={tab === "execution"} className={tab === "execution" ? "selected" : ""} onClick={() => setTab("execution")}>Execution</button><button aria-pressed={tab === "resources"} className={tab === "resources" ? "selected" : ""} onClick={() => setTab("resources")}>Capacity</button></div></div>
       <div className="toolbar">
-        <div className="searchbox"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search tasks" placeholder={`Search ${filterLabels[filterField]}...`} /></div>
-        <select className="filter-select" aria-label="Search field" value={filterField} onChange={(event) => setFilterField(parseFilterField(event.target.value))}>{Object.entries(filterLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        {tab === "planner" ? <button className="text-button primary" onClick={addChild} disabled={plannerLocked}><Plus size={15} /> Task</button> : null}
+        {tab !== "resources" ? <><div className="searchbox"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search tasks" placeholder={`Search ${filterLabels[filterField]}...`} /></div><select className="filter-select" aria-label="Search field" value={filterField} onChange={(event) => setFilterField(parseFilterField(event.target.value))}>{Object.entries(filterLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></> : <p className="capacity-help">Set available capacity for each day. 1 MD = one resource's full working day.</p>}
+        {tab === "planner" ? <button className="text-button primary" onClick={addChild} disabled={plannerLocked}><Plus size={16} /> Add task</button> : null}
         {tab === "planner" ? <button className="text-button" onClick={() => setPlannerLocked(!plannerLocked)}>{plannerLocked ? <Lock size={15} /> : <Unlock size={15} />}{plannerLocked ? "Locked" : "Unlocked"}</button> : null}
-        {tab === "execution" ? <button className={showBaseline ? "text-button selected" : "text-button"} onClick={() => setShowBaseline((current) => !current)}>Show baseline</button> : null}
-        <div className="tabs" role="tablist" aria-label="View"><button className={tab === "planner" ? "selected" : ""} onClick={() => setTab("planner")}>Planner</button><button className={tab === "execution" ? "selected" : ""} onClick={() => setTab("execution")}>Execution</button><button className={tab === "resources" ? "selected" : ""} onClick={() => setTab("resources")}>Resources</button></div>
-        <div className="zoom" aria-label="Timeline zoom"><span>Zoom:</span>{(["day", "week", "month"] satisfies readonly Zoom[]).map((value) => <button key={value} className={zoom === value ? "selected" : ""} onClick={() => setZoom(value)}>{zoomLabels[value]}</button>)}</div>
+        {tab === "execution" ? <button aria-pressed={showBaseline} className={showBaseline ? "text-button selected" : "text-button"} onClick={() => setShowBaseline((current) => !current)}>Show baseline</button> : null}
+        {tab !== "resources" ? <div className="pane-switch" role="group" aria-label="Visible panels">{(["split", "tasks", "timeline"] as const).filter((value) => !compact || value !== "split").map((value) => <button key={value} aria-pressed={activePane === value} className={activePane === value ? "selected" : ""} onClick={() => setPane(value)}>{value === "split" ? "Split" : value === "tasks" ? "Tasks" : "Timeline"}</button>)}</div> : null}
+        {tab !== "resources" && activePane !== "tasks" ? <div className="zoom" aria-label="Timeline zoom"><span>Scale</span>{(["day", "week", "month"] satisfies readonly Zoom[]).map((value) => <button key={value} aria-pressed={zoom === value} className={zoom === value ? "selected" : ""} onClick={() => setZoom(value)}>{zoomLabels[value]}</button>)}</div> : null}
         {tab !== "resources" ? <div className="panel-zoom" aria-label="Panel zoom"><button className="icon-button" title="Zoom out" aria-label="Zoom out panels" disabled={panelZoom <= minPanelZoom} onClick={() => setPanelZoom((current) => Math.max(minPanelZoom, current - panelZoomStep))}><ZoomOut size={16} /></button><output aria-live="polite">{Math.round(panelZoom * 100)}%</output><button className="icon-button" title="Zoom in" aria-label="Zoom in panels" disabled={panelZoom >= maxPanelZoom} onClick={() => setPanelZoom((current) => Math.min(maxPanelZoom, current + panelZoomStep))}><ZoomIn size={16} /></button></div> : null}
       </div>
       {tab === "planner" ? (

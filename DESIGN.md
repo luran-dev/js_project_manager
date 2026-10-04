@@ -9,7 +9,12 @@
 
 ## 1. Atmosphere & Identity
 
-ProjectVibe feels like a calm scheduling cockpit: dense, legible, and spreadsheet-adjacent without becoming gray sludge. The signature is a frozen WBS grid paired with a lightly lit timeline band, so planning status and schedule consequence are visible in one glance.
+ProjectVibe is a calm, readable planning workspace. Labeled navigation, quiet neutral surfaces, and a frozen task-name column give dense schedules a clear structure. Accent color identifies actions and selection; status colors retain their meaning across themes.
+
+### Usability refresh
+- Evidence: the local review found insufficient text/hover contrast, 22px actions, missing modal focus containment, and unusable side-by-side mobile panes.
+- Preserve the system font and operational character. Increase input readability, use 40px table rows, and separate navigation from editing tools.
+- Mobile shows one Tasks or Timeline pane at a time. Project context starts collapsed on small screens and expands on request.
 
 ## 2. Color
 
@@ -21,14 +26,22 @@ ProjectVibe feels like a calm scheduling cockpit: dense, legible, and spreadshee
 | Surface/selected | --surface-selected | #dff2fb | Current time band |
 | Text/primary | --text-primary | #111827 | Main labels |
 | Text/secondary | --text-secondary | #4b5563 | Secondary labels |
-| Text/muted | --text-muted | #7b8794 | Muted metadata |
+| Text/muted | --text-muted | #596879 | Readable metadata |
 | Border/default | --border-default | #d8e0e6 | Grid and pane dividers |
-| Accent/primary | --accent-primary | #2d7890 | Task bars and active controls |
-| Accent/strong | --accent-strong | #1f5e73 | Hover and focus |
+| Accent/primary | --accent-primary | #216c68 | Task bars and active controls |
+| Accent/strong | --accent-strong | #17534f | Hover and focus |
 | Status/success | --status-success | #3fab5a | Progress dots |
 | Status/warning | --status-warning | #d97706 | At-risk allocation |
-| Status/error | --status-error | #cc3d3d | Over-allocation |
+| Status/error | --status-error | #b42332 | Errors and over-allocation |
 | Status/pto | --status-pto | #d5dce1 | PTO mask |
+
+### Theme contract
+- Accent choices: Teal (#216c68), Blue (#285eb2), Violet (#6b48a8), Slate (#475569). Each has primary, hover, selected-surface, and selected-text tokens.
+- Appearance: Light, Dark, or System. Save both preferences locally; follow OS changes in System mode. Theme applies to authentication, dialogs, tables, Gantt and reports.
+- Dark surfaces: page #101820, panel #18232e, soft #22313f, raised #1d2b37. Text: primary #eef3f8, secondary #c0ccd8, muted #a7b5c4. Border #3b4d5e.
+- Dark accents: Teal #79d4c3, Blue #91baff, Violet #c4a9f4, Slate #b9c9dc; use dark ink on filled accent controls.
+- Semantic status pairs (text/background): success #17653d/#e7f4ec, warning #785400/#fff3cf, high #8a3e12/#ffeadb, error #b42332/#fdebed, info #285eb2/#eaf1ff. Dark variants use lighter text on deep tinted surfaces.
+- Normal text targets at least 4.5:1 contrast, including hover labels. Focus uses a visible outline. No permanent decorative colored edge indicates selection.
 
 ## 3. Typography
 
@@ -41,6 +54,8 @@ ProjectVibe feels like a calm scheduling cockpit: dense, legible, and spreadshee
 | Caption | 12px | 500 | 1.3 | 0 | Dates and heatmap cells |
 
 Primary font: system UI, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif. Mono font: "SFMono-Regular", Consolas, monospace.
+
+Type tokens: --font-caption 12px, --font-small 13px, --font-body 14px, --font-input 14px (16px on mobile), --font-title 20px. Numeric data uses tabular figures. Input values use regular weight; labels use 500–600.
 
 ## 4. Spacing & Layout
 
@@ -60,7 +75,7 @@ The app is a fixed-sidenav shell with a fixed top bar. The workspace body is the
 ## 5. Components
 
 ### App Shell
-- Structure: `header` + fixed left rail + main scroll body.
+- Structure: `header` with Appearance action + labeled left rail + main scroll body. Only working navigation destinations are shown.
 - States: rail buttons default, hover, active, focus.
 - Accessibility: labeled navigation buttons, visible focus.
 - Layout: fixed-sidenav-shell with bounded scroll body.
@@ -93,7 +108,20 @@ The app is a fixed-sidenav shell with a fixed top bar. The workspace body is the
 - Structure: independently scrollable Tasks and Timeline panes separated by a draggable divider.
 - States: 70-120% shared content zoom, pointer drag, keyboard divider adjustment.
 - Accessibility: icon zoom controls have explicit labels; the divider is a focusable separator with a numeric value.
-- Layout: panes stay side by side; tablet widths preserve full working minima, while mobile lets the non-focused pane collapse to a narrow preview so either side can receive up to 80%.
+- Layout: desktop supports Split, Tasks and Timeline views; mobile hides Split and uses a full-width single pane. Task-name columns are sticky on desktop, with horizontal scrolling on mobile to keep all fields reachable. Table rows and Gantt geometry share a 40px row rhythm.
+
+### Shared Dialog
+- Native modal `dialog` owns focus containment, background inertness and Escape dismissal. Closing restores focus to the opener.
+- Header and action footer stay visible while content scrolls. Close controls are at least 32px, 44px on touch layouts.
+- Project, workspace, resource, risk and appearance dialogs share the primitive.
+
+### Appearance Picker
+- Labeled radio cards for accent palettes and Light/Dark/System modes, live preview, local-save status, Done action.
+- Selection uses a tonal surface and check glyph; keyboard focus is visible. Storage failure leaves the chosen appearance usable for the session and explains the limitation.
+
+### Task Actions
+- A named More actions button opens the shared dialog with move, indent/outdent and delete actions, replacing five hidden inline buttons.
+- Deletion requires explicit confirmation in the dialog. Empty task results explain the next action.
 
 ### Resource Heatmap
 - Structure: user rows by date columns.
@@ -105,7 +133,7 @@ The app is a fixed-sidenav shell with a fixed top bar. The workspace body is the
 - Structure: project-level register table, severity/status filters, expandable response details, and a focused edit dialog.
 - States: low, medium, high, critical, open, occurred, and closed; linked Tasks expose compact active-risk badges.
 - Accessibility: filters and actions are explicitly labeled, expandable rows announce state, and severity is always written as text rather than conveyed by color alone.
-- Layout: dense table on desktop with horizontal containment on tablet/mobile; the edit form collapses from two columns to one.
+- Layout: dense table on desktop, readable cards on tablet/mobile, shared response detail section; the edit form collapses from two columns to one. Deletion asks for confirmation.
 
 ## 6. Motion & Interaction
 

@@ -1,7 +1,8 @@
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, MoreHorizontal, Trash2, X } from "lucide-react";
 import type { DragEvent, PointerEvent } from "react";
 import { useState } from "react";
 import { RiskBadge } from "./RiskBadge";
+import { Modal } from "./Modal";
 import { addDays, daysBetween } from "./schedule";
 import { TASK_PROGRESS_COLORS, TASK_STATUSES, type ProjectRisk, type Task, type TaskId, type TaskProgressColor, type TaskStatus, type User, type Zoom } from "./types";
 
@@ -76,6 +77,16 @@ type WbsProps = {
 export function WbsTable({ rows, allTasks, users, risks, onOpenRisk, collapsedIds, readOnly = false, onToggle, onTitleChange, onStatusChange, onDateChange, onDurationChange, onProgressChange, onProgressColorChange, onAssigneeChange, onDependencyChange, onTaskReorder, onMoveUp, onMoveDown, onIndent, onOutdent, onDelete }: WbsProps) {
   const [dependencyText, setDependencyText] = useState<Record<TaskId, string>>({}); const [durationText, setDurationText] = useState<Record<TaskId, string>>({}); const [progressText, setProgressText] = useState<Record<TaskId, string>>({});
   const [draggedTaskId, setDraggedTaskId] = useState<TaskId>();
+  const [actionTaskId, setActionTaskId] = useState<TaskId>();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const actionTask = allTasks.find((task) => task.id === actionTaskId);
+  const actionIndex = rows.findIndex((task) => task.id === actionTaskId);
+  const closeActions = () => { setActionTaskId(undefined); setConfirmDelete(false); };
+  const runAction = (action: (id: TaskId) => void) => {
+    if (actionTask === undefined) return;
+    action(actionTask.id);
+    closeActions();
+  };
   const shortIds = taskCodeById(allTasks);
   const lookup = dependencyLookup(allTasks);
   const changeDates = (id: TaskId, startDate: string, endDate: string) => {
@@ -97,9 +108,10 @@ export function WbsTable({ rows, allTasks, users, risks, onOpenRisk, collapsedId
   return (
     <div className="wbs-pane">
       <div className="wbs-title">Tasks</div>
-      <table>
+      <table className="planner-table">
         <thead><tr><th>#</th><th>Task ID</th><th>Task Name</th><th>Status</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Progress (%)</th><th>Assigned To</th><th>Depends On</th></tr></thead>
         <tbody>
+          {rows.length === 0 ? <tr><td colSpan={10} className="table-empty">No tasks to show. Add a task or change your search.</td></tr> : null}
           {rows.map((task, index) => {
             const children = childCount(allTasks, task.id);
             return (
@@ -114,18 +126,12 @@ export function WbsTable({ rows, allTasks, users, risks, onOpenRisk, collapsedId
                 }} onDrop={(event) => { if (!readOnly) { dropTask(event, task.id); } }} onDragEnd={() => setDraggedTaskId(undefined)}>
                 <td>{index + 1}</td>
                 <td className="task-id" title={task.id}>{shortIds.get(task.id) ?? task.id}</td>
-	                <td className="task-name" style={{ paddingInlineStart: `${12 + levelOf(task, allTasks) * 22}px` }}>
-	                  {children > 0 ? <button className="icon-button" aria-expanded={!collapsedIds.has(task.id)} onClick={() => onToggle(task.id)}>{collapsedIds.has(task.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button> : <span className="indent-spacer" />}
+	                <td className="task-name"><div className="task-name-content" style={{ paddingInlineStart: `${Math.min(levelOf(task, allTasks), 4) * 12}px` }}>
+	                  {children > 0 ? <button className="icon-button" aria-label={`${collapsedIds.has(task.id) ? "Expand" : "Collapse"} ${task.title}`} aria-expanded={!collapsedIds.has(task.id)} onClick={() => onToggle(task.id)}>{collapsedIds.has(task.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button> : <span className="indent-spacer" />}
                   <input className={`task-title-input${children > 0 ? " summary-task" : ""}`} aria-label={`${task.title} task name`} value={task.title} disabled={readOnly} onChange={(event) => onTitleChange(task.id, event.target.value)} />
 	                  <RiskBadge risks={risks} taskId={task.id} users={users} onOpenRisk={onOpenRisk} />
-		                  <span className="hierarchy-actions">
-		                    <button className="icon-button" aria-label={`Outdent ${task.title}`} disabled={readOnly || task.parentId === undefined} onClick={() => onOutdent(task.id)}><ChevronLeft size={14} /></button>
-		                    <button className="icon-button" aria-label={`Indent ${task.title}`} disabled={readOnly || index === 0} onClick={() => onIndent(task.id)}><ChevronRight size={14} /></button>
-		                    <button className="icon-button" aria-label={`Move up ${task.title}`} disabled={readOnly || index === 0} onClick={() => onMoveUp(task.id)}><ChevronUp size={14} /></button>
-		                    <button className="icon-button" aria-label={`Move down ${task.title}`} disabled={readOnly || index === rows.length - 1} onClick={() => onMoveDown(task.id)}><ChevronDown size={14} /></button>
-		                    <button className="icon-button danger" aria-label={`Delete ${task.title}`} disabled={readOnly} onClick={() => onDelete(task.id)}><Trash2 size={14} /></button>
-		                  </span>
-		        </td>
+                  <button className="icon-button task-more" title={`Actions for ${task.title}`} aria-label={`Actions for ${task.title}`} disabled={readOnly} onClick={() => setActionTaskId(task.id)}><MoreHorizontal size={18} /></button>
+		        </div></td>
                 <td><select className={`status-select ${statusClass(task.status)}`} value={task.status} disabled={readOnly} aria-label={`${task.title} status`} onChange={(event) => onStatusChange(task.id, parseStatus(event.target.value))}>{TASK_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></td>
                 <td><input className="date-input" type="date" value={task.startDate} disabled={readOnly || children > 0} aria-label={`${task.title} start date`} onChange={(event) => changeDates(task.id, event.target.value, task.endDate)} /></td>
                 <td><input className="date-input" type="date" value={task.endDate} min={task.startDate} disabled={readOnly || children > 0} aria-label={`${task.title} end date`} onChange={(event) => changeDates(task.id, task.startDate, event.target.value)} /></td>
@@ -148,6 +154,17 @@ export function WbsTable({ rows, allTasks, users, risks, onOpenRisk, collapsedId
           })}
         </tbody>
       </table>
+      {actionTask === undefined ? null : <Modal title={`Task actions: ${actionTask.title}`} className="task-actions-dialog" onClose={closeActions}>
+        <header className="modal-header"><h2>{confirmDelete ? "Delete task?" : "Task actions"}</h2><button className="icon-button" aria-label="Close task actions" onClick={closeActions}><X size={20} /></button></header>
+        <div className="task-actions-content"><p>{actionTask.title}</p>{confirmDelete ? <><p className="dialog-description">This removes the task and its dependency links. This cannot be undone.</p><button className="text-button danger-solid" onClick={() => runAction(onDelete)}>Delete task</button><button className="text-button" onClick={() => setConfirmDelete(false)}>Keep task</button></> : <>
+          <button className="text-button" disabled={readOnly || actionIndex <= 0} onClick={() => runAction(onMoveUp)}><ChevronUp size={18} /> Move up</button>
+          <button className="text-button" disabled={readOnly || actionIndex === rows.length - 1} onClick={() => runAction(onMoveDown)}><ChevronDown size={18} /> Move down</button>
+          <button className="text-button" disabled={readOnly || actionIndex <= 0} onClick={() => runAction(onIndent)}><ChevronRight size={18} /> Indent</button>
+          <button className="text-button" disabled={readOnly || actionTask.parentId === undefined} onClick={() => runAction(onOutdent)}><ChevronLeft size={18} /> Outdent</button>
+          <button className="text-button danger" disabled={readOnly || childCount(allTasks, actionTask.id) > 0} onClick={() => setConfirmDelete(true)}><Trash2 size={18} /> Delete task</button>
+          {childCount(allTasks, actionTask.id) > 0 ? <small>Move or remove child tasks before deleting this group.</small> : null}
+        </>}</div>
+      </Modal>}
 	    </div>
 	  );
 	}
@@ -161,8 +178,11 @@ type DragState = { readonly id: TaskId; readonly mode: "move" | "resize"; readon
 export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, zoom, scale, width, readOnly = false, baselineRows = [], onTaskDateChange }: GanttProps) {
   const [dragState, setDragState] = useState<DragState>();
   const pairedRows = baselineRows.length > 0;
-  const rowHeight = pairedRows ? 73 : 36;
-  const actualTop = pairedRows ? 42 : 0;
+  const rowHeight = pairedRows ? 80 : 40;
+  const actualTop = pairedRows ? 40 : 0;
+  const today = new Date();
+  const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const todayOffset = daysBetween(minDate, todayDate) * scale;
   const timelineHeight = Math.max(620, rows.length * rowHeight + 96);
   const rowById = new Map(rows.map((task, index) => [task.id, { task, index }]));
   const connectors = rows.flatMap((task, index) =>
@@ -174,8 +194,8 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
       const predecessorLeft = daysBetween(minDate, predecessor.task.startDate) * scale;
       const startX = predecessorLeft + taskWidth(predecessor.task, minDate, scale);
       const endX = daysBetween(minDate, task.startDate) * scale;
-      const startY = 83 + predecessor.index * rowHeight;
-      const endY = 83 + index * rowHeight;
+      const startY = 100 + actualTop + predecessor.index * rowHeight;
+      const endY = 100 + actualTop + index * rowHeight;
       return [{ dependencyId, taskId: task.id, path: connectorPath(startX, startY, endX, endY) }];
     }),
 	  );
@@ -210,7 +230,7 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
           {timelineMarkers.map((date) => <span className={zoom === "day" ? "day-marker" : ""} key={date} style={{ left: daysBetween(minDate, date) * scale }}>{zoom === "month" ? monthLabel(date) : dayLabel(date)}</span>)}
         </div>
         {holidayDates.map((date) => <div key={date} className="holiday-band" title={date} style={{ left: daysBetween(minDate, date) * scale, width: scale }} />)}
-        <div className="today-band" style={{ left: daysBetween(minDate, "2026-07-01") * scale, width: 18 * scale }} />
+        {todayOffset >= 0 && todayOffset < width ? <div className="today-band" style={{ left: todayOffset }}><span>Today</span></div> : null}
         <svg className="dependency-layer" width={width} height={timelineHeight} aria-hidden="true">
           <defs><marker id="arrowhead" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" /></marker></defs>
           {connectors.map((connector) => <path key={`${connector.dependencyId}-${connector.taskId}`} d={connector.path} />)}
@@ -218,7 +238,7 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
         {rows.map((task, index) => {
           const left = daysBetween(minDate, task.startDate) * scale;
           const barWidth = taskWidth(task, minDate, scale);
-          const top = 72 + index * rowHeight;
+          const top = 89 + index * rowHeight;
           const children = childCount(allTasks, task.id);
           const draggable = !readOnly && children === 0;
           const milestone = isMilestone(task);
@@ -226,7 +246,7 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
           const baseline = baselineRows.find((item) => item.id === task.id);
           return (
             <div key={task.id} className="gantt-row" style={{ top }}>
-              {baseline === undefined ? null : <span className="baseline-bar" style={{ top: 13, left: daysBetween(minDate, baseline.startDate) * scale, width: taskWidth(baseline, minDate, scale) }} aria-label={`${task.title} baseline, ${baseline.startDate} to ${baseline.endDate}`} />}
+              {baseline === undefined ? null : <span className="baseline-bar" style={{ top: 6, left: daysBetween(minDate, baseline.startDate) * scale, width: taskWidth(baseline, minDate, scale) }} aria-label={`${task.title} baseline, ${baseline.startDate} to ${baseline.endDate}`} />}
               {milestone ? (
                 <span
                   className={`milestone ${statusClass(task.status)}${readOnly ? " locked" : ""}`}
@@ -240,14 +260,14 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
               ) : (
                 <span
                   className={`bar ${statusClass(task.status)}${children > 0 ? " summary" : ""}${readOnly ? " locked" : ""}`}
-                  style={{ top: actualTop, left, width: barWidth }}
+                  style={{ top: actualTop + (children > 0 ? 5 : 0), left, width: barWidth }}
                   aria-label={`${task.title}, ${task.startDate} to ${task.endDate}, ${task.progress}%`}
                   onPointerDown={(event) => { if (draggable) { startDrag(event, task, "move"); } }}
                   onPointerMove={(event) => updateDrag(event.clientX)}
                   onPointerUp={() => setDragState(undefined)}
                   onPointerCancel={() => setDragState(undefined)}
                 >
-                  {children === 0 ? task.title : ""}
+                  {children === 0 ? <span className="bar-text">{task.title}</span> : null}
                   {resizable ? (
                     <span
                       className="resize-handle"

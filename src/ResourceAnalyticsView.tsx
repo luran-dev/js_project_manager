@@ -19,7 +19,7 @@ export function ResourceAnalyticsView({ workspace }: { readonly workspace: Works
   const dates = loads[0]?.dailyLoads.map((load) => load.date) ?? [];
   const selectedLoad = loads.find((load) => load.userId === selectedUserId) ?? loads[0];
   const selectedUser = workspace.users.find((user) => user.id === selectedLoad?.userId);
-  const hotspots = loads.flatMap((load) => load.dailyLoads.filter((day) => day.hours > day.capacity).map((day) => ({ label: `${shortDate(day.date)} ${load.name} ${loadRatio(day.hours, day.capacity).toFixed(1)} PD`, ratio: loadRatio(day.hours, day.capacity) }))).sort((left, right) => right.ratio - left.ratio).slice(0, 4);
+  const hotspots = loads.flatMap((load) => load.dailyLoads.filter((day) => day.hours > day.capacity).map((day) => ({ label: `${shortDate(day.date)} ${load.name} ${loadRatio(day.hours, day.capacity).toFixed(1)}× capacity`, ratio: loadRatio(day.hours, day.capacity) }))).sort((left, right) => right.ratio - left.ratio).slice(0, 4);
 
   return (
     <section className="board analytics-board" aria-label="Resource workload and capacity">
@@ -56,7 +56,7 @@ export function ResourceAnalyticsView({ workspace }: { readonly workspace: Works
         </div>
         <div className="analytics-panel wide">
           <h3>Daily Workload Heatmap</h3>
-          <div className="workload-legend"><span><i className="normal" /> Normal (&le;1.0 PD)</span><span><i className="over" /> Overallocated (&gt;1.0 PD)</span><span><i className="off" /> PTO / Weekend</span></div>
+          <div className="workload-legend"><span><i className="normal" /> Within capacity</span><span><i className="over" /> Above capacity</span><span><i className="off" /> PTO / Weekend</span></div>
           <div className="workload-grid" style={{ gridTemplateColumns: `160px repeat(${dates.length}, 80px)` }}>
             <div className="workload-head">Resources</div>
             {dates.map((date) => <div className="workload-head date" key={date}>{shortDate(date)}</div>)}

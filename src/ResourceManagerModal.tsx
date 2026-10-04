@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Modal } from "./Modal";
 import type { Pto, User, UserId, Workspace } from "./types";
 
 type Props = {
@@ -53,8 +54,7 @@ export function ResourceManagerModal({ workspace, onCancel, onConfirm }: Props) 
   };
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="resource-modal" role="dialog" aria-modal="true" aria-label="Manage resources">
+    <Modal title="Manage resources" onClose={onCancel}>
         <header className="modal-header">
           <h2>Manage Resources</h2>
           <button className="icon-button" aria-label="Close resources" onClick={onCancel}><X size={18} /></button>
@@ -101,7 +101,6 @@ export function ResourceManagerModal({ workspace, onCancel, onConfirm }: Props) 
           <button className="text-button" onClick={onCancel}>Cancel</button>
           <button className="text-button primary" onClick={() => onConfirm(draftUsers, draftPtos, deletedResourceIds)}>Confirm</button>
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }
