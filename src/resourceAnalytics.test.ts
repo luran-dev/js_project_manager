@@ -15,7 +15,7 @@ describe("resource analytics", () => {
       ],
     };
 
-    const [load] = buildResourceLoads(workspace, "execution");
+    const [load] = buildResourceLoads(workspace);
 
     expect(load?.totalHours).toBe(16);
     expect(load?.projectLoads.map((project) => project.projectName)).toEqual(["Alpha", "Beta"]);
@@ -23,7 +23,7 @@ describe("resource analytics", () => {
     expect(load?.dailyLoads[0]).toMatchObject({ date: "2026-06-01", hours: 16, capacity: 8, projects: ["Alpha", "Beta"] });
   });
 
-  it("allocates one MD per assigned task day in the planner perspective", () => {
+  it("allocates one MD per assigned task day in both perspectives", () => {
     const workspace: Workspace = {
       id: "w1",
       name: "Team",
@@ -37,12 +37,35 @@ describe("resource analytics", () => {
       }],
     };
 
-    const [planner] = buildResourceLoads(workspace, "planner");
-    const [execution] = buildResourceLoads(workspace, "execution");
+    const [planner] = buildResourceLoads(workspace);
+    const [execution] = buildResourceLoads(workspace);
 
     expect(planner?.totalHours).toBe(16);
     expect(planner?.dailyLoads.map((day) => day.hours)).toEqual([8, 8]);
-    expect(execution?.totalHours).toBe(12);
-    expect(execution?.dailyLoads.map((day) => day.hours)).toEqual([6, 6]);
+    expect(execution?.totalHours).toBe(16);
+    expect(execution?.dailyLoads.map((day) => day.hours)).toEqual([8, 8]);
+  });
+
+  it("uses the configured daily capacity as the workload baseline", () => {
+    const workspace: Workspace = {
+      id: "w1",
+      name: "Team",
+      users: [{ id: "u1", name: "Ada", email: "ada@example.com", dailyCapacityHours: 8 }],
+      ptos: [],
+      resourceCapacities: [{ userId: "u1", date: "2026-06-01", md: 0.7 }],
+      projects: [{
+        id: "p1",
+        name: "Alpha",
+        defaultCountry: "Korea",
+        tasks: [{ id: "t1", title: "API", startDate: "2026-06-01", endDate: "2026-06-02", duration: 2, status: "TO DO", progress: 0, estimatedHours: 12, assigneeId: "u1", sortOrder: 1, dependencyIds: [] }],
+      }],
+    };
+
+    const [load] = buildResourceLoads(workspace);
+
+    expect(load?.totalHours).toBeCloseTo(13.6);
+    expect(load?.capacityHours).toBeCloseTo(13.6);
+    expect(load?.dailyLoads.map((day) => day.hours)).toEqual([5.6, 8]);
+    expect(load?.projectLoads[0]?.hours).toBeCloseTo(13.6);
   });
 });

@@ -7,7 +7,7 @@ import { ExecutionTable } from "./ExecutionTable";
 import { actualTask } from "./execution";
 import { ResourceHeatmap } from "./ResourceHeatmap";
 import { addDays, addWorkingDays, cascadeTasks, daysBetween, isHoliday, visibleTasks, workingDaysBetween } from "./schedule";
-import type { ProjectState, Task, TaskId, TaskProgressColor, TaskStatus, Workspace, Zoom } from "./types";
+import type { ProjectState, Task, TaskId, TaskProgressColor, TaskStatus, UserId, Workspace, Zoom } from "./types";
 
 const zoomScale: Record<Zoom, number> = { day: 56, week: 12, month: 7 };
 const zoomLabels: Record<Zoom, string> = { day: "Day", week: "Week", month: "Month" };
@@ -38,7 +38,7 @@ const taskWithAssignee = (task: Task, assigneeId: string): Task => {
   return { ...task, assigneeId };
 };
 
-export function ProjectPlanner({ project, workspace, onProjectChange, onTasksChange }: { readonly project: ProjectState; readonly workspace: Workspace; readonly onProjectChange: (updater: (project: ProjectState) => ProjectState) => void; readonly onTasksChange: (updater: (tasks: readonly Task[]) => readonly Task[]) => void }) {
+export function ProjectPlanner({ project, workspace, onWorkspaceChange, onProjectChange, onTasksChange }: { readonly project: ProjectState; readonly workspace: Workspace; readonly onWorkspaceChange: (updater: (workspace: Workspace) => Workspace) => void; readonly onProjectChange: (updater: (project: ProjectState) => ProjectState) => void; readonly onTasksChange: (updater: (tasks: readonly Task[]) => readonly Task[]) => void }) {
   const [query, setQuery] = useState("");
   const [filterField, setFilterField] = useState<FilterField>("taskName");
   const [zoom, setZoom] = useState<Zoom>("month");
@@ -46,7 +46,6 @@ export function ProjectPlanner({ project, workspace, onProjectChange, onTasksCha
   const [taskPanePercent, setTaskPanePercent] = useState(54);
   const [tab, setTab] = useState<"planner" | "execution" | "resources">("planner");
   const [showBaseline, setShowBaseline] = useState(true);
-  const [resourceView, setResourceView] = useState<"planner" | "execution">("planner");
   const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<TaskId>>(new Set());
   const splitRef = useRef<HTMLDivElement>(null);
   const country = project.defaultCountry ?? "Korea";
@@ -62,6 +61,9 @@ export function ProjectPlanner({ project, workspace, onProjectChange, onTasksCha
   const chartTasks = [...scheduledTasks, ...allExecutionTasks];
   const minDate = chartTasks.map((task) => task.startDate).sort()[0] ?? "2026-06-01";
   const maxDate = chartTasks.map((task) => task.endDate).sort().at(-1) ?? "2026-08-31";
+  const projectDates = tasks.flatMap((task) => [task.startDate, task.endDate]).sort();
+  const projectStartDate = projectDates[0] ?? minDate;
+  const projectEndDate = projectDates.at(-1) ?? maxDate;
   const totalDays = daysBetween(minDate, maxDate) + 10;
   const scale = zoomScale[zoom];
   const timelineDates = dateRange(minDate, totalDays);
@@ -71,6 +73,10 @@ export function ProjectPlanner({ project, workspace, onProjectChange, onTasksCha
   const plannerLocked = project.plannerLocked === true;
   const splitStyle: SplitStyle = { "--task-pane-width": `${taskPanePercent}%`, "--panel-zoom": panelZoom };
   const setPlannerLocked = (locked: boolean) => onProjectChange((current) => ({ ...current, plannerLocked: locked }));
+  const setResourceCapacity = (userId: UserId, date: string, md: number) => onWorkspaceChange((current) => ({
+    ...current,
+    resourceCapacities: [...(current.resourceCapacities ?? []).filter((capacity) => capacity.userId !== userId || capacity.date !== date), ...(md === 1 ? [] : [{ userId, date, md }])],
+  }));
 
   const resizeTaskPane = (clientX: number) => {
     const bounds = splitRef.current?.getBoundingClientRect();
@@ -234,7 +240,7 @@ export function ProjectPlanner({ project, workspace, onProjectChange, onTasksCha
       ) : tab === "execution" ? (
         <div ref={splitRef} className="split execution-split" style={splitStyle}><ExecutionTable rows={rows} actualRows={actualRows} allTasks={scheduledTasks} users={workspace.users} collapsedIds={collapsedIds} showBaseline={showBaseline} onToggle={toggle} onActualDateChange={(id, startDate, endDate) => setActualDates({ id, startDate, endDate, preserveDuration: false })} onActualDurationChange={setActualDuration} onActualStatusChange={setActualStatus} onActualProgressChange={setActualProgress} onActualProgressColorChange={setActualProgressColor} onActualAssigneeChange={setActualAssignee} onActualEstimatedHoursChange={setActualEstimatedHours} />{splitHandle}<Gantt rows={actualRows} allTasks={scheduledTasks} baselineRows={showBaseline ? rows : []} minDate={minDate} timelineMarkers={timelineMarkers} holidayDates={holidayDates} zoom={zoom} scale={scale} width={Math.max(720, totalDays * scale)} onTaskDateChange={setActualDates} /></div>
       ) : (
-        <ResourceHeatmap title={resourceView === "planner" ? "Planner Resource Load" : "Execution Resource Load"} perspective={resourceView} actions={<div className="resource-view-toggle" aria-label="Resource view"><button className={resourceView === "planner" ? "selected" : ""} onClick={() => setResourceView("planner")}>Planner</button><button className={resourceView === "execution" ? "selected" : ""} onClick={() => setResourceView("execution")}>Execution</button></div>} tasks={resourceView === "planner" ? scheduledTasks : allExecutionTasks} users={workspace.users} ptos={workspace.ptos} dates={dateRange("2026-07-01", 45)} />
+        <ResourceHeatmap users={workspace.users} ptos={workspace.ptos} capacities={workspace.resourceCapacities} dates={dateRange(projectStartDate, daysBetween(projectStartDate, projectEndDate) + 1)} onCapacityChange={setResourceCapacity} />
       )}
     </section>
   );

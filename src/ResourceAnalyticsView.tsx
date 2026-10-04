@@ -13,7 +13,7 @@ export function ResourceAnalyticsView({ workspace }: { readonly workspace: Works
   const [resourceView, setResourceView] = useState<"planner" | "execution">("planner");
   const [selectedUserId, setSelectedUserId] = useState<UserId>();
   const analysisWorkspace = resourceView === "planner" ? workspace : { ...workspace, projects: workspace.projects.map((project) => ({ ...project, tasks: project.tasks.map(actualTask) })) };
-  const loads = buildResourceLoads(analysisWorkspace, resourceView);
+  const loads = buildResourceLoads(analysisWorkspace);
   const totalHours = loads.reduce((sum, load) => sum + load.totalHours, 0);
   const overallocated = loads.filter((load) => load.overallocatedDays > 0);
   const dates = loads[0]?.dailyLoads.map((load) => load.date) ?? [];
@@ -65,7 +65,8 @@ export function ResourceAnalyticsView({ workspace }: { readonly workspace: Works
               ...load.dailyLoads.map((day) => {
                 const ratio = loadRatio(day.hours, day.capacity);
                 const off = day.capacity === 0;
-                return <div className={off ? "workload-cell off" : day.hours === 0 ? "workload-cell idle" : ratio > 1 ? "workload-cell over" : "workload-cell normal"} key={`${load.userId}-${day.date}`} title={`${load.name} ${shortDate(day.date)} ${day.projects.join(", ") || "No assignment"}`} aria-label={`${load.name} ${day.date}: ${off ? "PTO or weekend" : `${ratio.toFixed(1)} PD`}`}>{off || day.hours === 0 ? "" : ratio.toFixed(1)}</div>;
+                const assignedMd = day.hours / (workspace.users.find((user) => user.id === load.userId)?.dailyCapacityHours ?? 8);
+                return <div className={off ? "workload-cell off" : day.hours === 0 ? "workload-cell idle" : ratio > 1 ? "workload-cell over" : "workload-cell normal"} key={`${load.userId}-${day.date}`} title={`${load.name} ${shortDate(day.date)} ${day.projects.join(", ") || "No assignment"}`} aria-label={`${load.name} ${day.date}: ${off ? "PTO or weekend" : `${assignedMd.toFixed(1)} MD`}`}>{off || day.hours === 0 ? "" : assignedMd.toFixed(1)}</div>;
               }),
             ])}
           </div>

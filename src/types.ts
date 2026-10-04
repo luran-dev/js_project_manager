@@ -39,6 +39,12 @@ export type Pto = {
   readonly reason: string;
 };
 
+export type ResourceCapacity = {
+  readonly userId: UserId;
+  readonly date: string;
+  readonly md: number;
+};
+
 export type Task = {
   readonly id: TaskId;
   readonly title: string;
@@ -77,5 +83,6 @@ export type Workspace = {
   readonly name: string;
   readonly users: readonly User[];
   readonly ptos: readonly Pto[];
+  readonly resourceCapacities?: readonly ResourceCapacity[];
   readonly projects: readonly ProjectState[];
 };

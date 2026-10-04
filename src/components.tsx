@@ -159,6 +159,7 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
   const pairedRows = baselineRows.length > 0;
   const rowHeight = pairedRows ? 73 : 36;
   const actualTop = pairedRows ? 42 : 0;
+  const timelineHeight = Math.max(620, rows.length * rowHeight + 96);
   const rowById = new Map(rows.map((task, index) => [task.id, { task, index }]));
   const connectors = rows.flatMap((task, index) =>
     task.dependencyIds.flatMap((dependencyId) => {
@@ -199,14 +200,14 @@ export function Gantt({ rows, allTasks, minDate, timelineMarkers, holidayDates, 
 
   return (
     <div className="gantt-pane">
-      <div className="timeline" style={{ width }}>
+      <div className="timeline" style={{ width, minHeight: timelineHeight }}>
         <div className="timeline-title">Timeline</div>
         <div className="months">
           {timelineMarkers.map((date) => <span className={zoom === "day" ? "day-marker" : ""} key={date} style={{ left: daysBetween(minDate, date) * scale }}>{zoom === "month" ? monthLabel(date) : dayLabel(date)}</span>)}
         </div>
         {holidayDates.map((date) => <div key={date} className="holiday-band" title={date} style={{ left: daysBetween(minDate, date) * scale, width: scale }} />)}
         <div className="today-band" style={{ left: daysBetween(minDate, "2026-07-01") * scale, width: 18 * scale }} />
-        <svg className="dependency-layer" width={width} height={Math.max(620, rows.length * rowHeight + 96)} aria-hidden="true">
+        <svg className="dependency-layer" width={width} height={timelineHeight} aria-hidden="true">
           <defs><marker id="arrowhead" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" /></marker></defs>
           {connectors.map((connector) => <path key={`${connector.dependencyId}-${connector.taskId}`} d={connector.path} />)}
         </svg>

@@ -151,6 +151,7 @@ export function App() {
     ...current,
     users,
     ptos,
+    ...(current.resourceCapacities === undefined ? {} : { resourceCapacities: current.resourceCapacities.filter((capacity) => !deletedResourceIds.includes(capacity.userId)) }),
     projects: current.projects.map((item) => ({ ...item, tasks: item.tasks.map((task) => (deletedResourceIds.includes(task.assigneeId ?? "") ? clearAssignee(task) : task)) })),
   }));
 
@@ -206,7 +207,7 @@ export function App() {
           saveResources(users, ptos, deletedResourceIds);
           setShowResourceManager(false);
         }} /> : null}
-        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : <ProjectPlanner project={project} workspace={workspace} onProjectChange={updateProject} onTasksChange={setProjectTasks} />}
+        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : <ProjectPlanner project={project} workspace={workspace} onWorkspaceChange={updateWorkspace} onProjectChange={updateProject} onTasksChange={setProjectTasks} />}
       </main>
     </div>
   );
