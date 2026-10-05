@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createPasswordResetHandler, HttpError } from "./passwordReset.mjs";
 import { currentUser, initialWorkspaces } from "./seed.mjs";
+import { accessibleSnapshot, validateSnapshotWrite } from "./okrValidation.mjs";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 
@@ -119,7 +120,7 @@ export const handleApiRequest = async (request, response) => {
 
     if (request.method === "GET" && url.pathname === "/api/auth/session") {
       const userId = sessionUserId(request);
-      json(response, 200, userId ? { authenticated: true, snapshot: loadSnapshot(userId) } : { authenticated: false });
+      json(response, 200, userId ? { authenticated: true, snapshot: accessibleSnapshot(loadSnapshot(userId)) } : { authenticated: false });
       return;
     }
 
@@ -136,7 +137,7 @@ export const handleApiRequest = async (request, response) => {
         return;
       }
       const token = createSession(String(user.id));
-      json(response, 200, loadSnapshot(String(user.id)), { "set-cookie": `pv_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${sessionTtlMs / 1000}` });
+      json(response, 200, accessibleSnapshot(loadSnapshot(String(user.id))), { "set-cookie": `pv_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${sessionTtlMs / 1000}` });
       return;
     }
 
@@ -177,13 +178,13 @@ export const handleApiRequest = async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/api/snapshot") {
-      json(response, 200, loadSnapshot(userId));
+      json(response, 200, accessibleSnapshot(loadSnapshot(userId)));
       return;
     }
 
     if (request.method === "PUT" && url.pathname === "/api/snapshot") {
       const snapshot = await readJson(request);
-      saveSnapshot(userId, snapshot);
+      saveSnapshot(userId, validateSnapshotWrite(loadSnapshot(userId), snapshot));
       json(response, 200, { ok: true });
       return;
     }

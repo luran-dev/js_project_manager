@@ -1,0 +1,78 @@
+.okr-board { min-width: 0; }
+.okr-board h1 { display: flex; align-items: center; gap: var(--space-2); }
+.okr-grid-toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-4); padding: var(--space-4) var(--space-5); }
+.okr-grid-toolbar label, .okr-editor-body label { display: grid; gap: var(--space-2); font-size: var(--font-small); color: var(--text-secondary); }
+.okr-grid-toolbar input, .okr-grid-toolbar select, .okr-editor-body input:not([type=checkbox]), .okr-editor-body textarea, .okr-editor-body select { padding: var(--space-2); min-height: 40px; border: 1px solid var(--border-control); border-radius: 6px; background: var(--surface-panel); color: var(--text-primary); font: inherit; }
+.okr-search-label { flex: 1; min-width: 180px; }
+.okr-week-navigation { margin-left: auto; display: grid; gap: var(--space-2); font-size: var(--font-small); }
+.okr-week-navigation > div { display: flex; align-items: center; gap: var(--space-1); }
+.okr-grid-caption { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--border-default); color: var(--text-secondary); font-size: var(--font-small); }
+.okr-grid-caption > :last-child { margin-left: auto; }
+.okr-grid-scroll { overflow: auto; max-height: 70dvh; border-top: 1px solid var(--border-default); }
+.okr-grid-scroll:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+.okr-grid { border-spacing: 0; table-layout: fixed; width: 1704px; min-width: 100%; text-align: left; }
+.okr-col-text, .okr-col-week { width: 220px; }
+.okr-col-projects, .okr-col-duration { width: 160px; }
+.okr-col-actions { width: 64px; }
+.okr-grid th, .okr-grid td { padding: var(--space-3); border-right: 1px solid var(--border-default); border-bottom: 1px solid var(--border-default); vertical-align: top; }
+.okr-grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-soft); font-size: var(--font-small); font-weight: 600; }
+.okr-grid th small { display: block; margin-top: var(--space-1); color: var(--text-secondary); font-weight: 400; }
+.okr-grid tr > :first-child { position: sticky; left: 0; z-index: 1; background: var(--surface-panel); }
+.okr-grid thead tr > :first-child { z-index: 3; background: var(--surface-soft); }
+.okr-grid thead .okr-current-week { background: var(--surface-selected); color: var(--accent-ink); }
+.okr-grid td > textarea { display: block; width: 100%; min-height: 120px; padding: var(--space-2); border: 1px solid transparent; border-radius: 4px; resize: vertical; background: transparent; color: var(--text-primary); line-height: 1.5; font-size: var(--font-body); }
+.okr-grid td > textarea:hover:not([readonly]), .okr-grid td > textarea:focus { background: var(--surface-raised); border-color: var(--border-control); }
+.okr-grid td > small { color: var(--status-error); }
+.okr-week-cell, .okr-duration-cell { border: 0; background: transparent; color: inherit; padding: var(--space-2); text-align: left; width: 100%; display: grid; gap: var(--space-3); border-radius: 4px; }
+.okr-week-cell { min-height: 120px; align-content: start; }
+.okr-week-cell:hover:not(:disabled), .okr-duration-cell:hover:not(:disabled) { background: var(--surface-soft); }
+.okr-week-cell:disabled, .okr-duration-cell:disabled { opacity: 1; }
+.okr-status { display: inline-block; width: fit-content; padding: var(--space-1) var(--space-2); border-radius: 4px; font-size: var(--font-small); font-weight: 600; }
+.okr-status-green { color: var(--status-success); background: var(--status-success-bg); }
+.okr-status-yellow { color: var(--status-warning); background: var(--status-warning-bg); }
+.okr-status-red { color: var(--status-error); background: var(--status-error-bg); }
+.okr-status-pending { color: var(--text-secondary); background: var(--surface-soft); }
+.okr-cell-note, .okr-cell-plan > span { white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.okr-cell-plan { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border-default); border-radius: 6px; background: var(--status-warning-bg); color: var(--status-warning); font-size: var(--font-small); }
+.okr-cell-plan strong { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; color: inherit; }
+.okr-cell-plan strong svg { flex-shrink: 0; }
+.okr-cell-plan.is-complete { background: var(--surface-soft); color: var(--text-secondary); }
+.okr-missing-plan { color: var(--status-warning); font-size: var(--font-small); }
+.okr-muted { color: var(--text-secondary); }
+.okr-project-links { display: grid; justify-items: start; gap: var(--space-2); }
+.okr-project-link, .okr-edit-link { background: transparent; border: 0; color: var(--accent-ink); text-align: left; min-height: 32px; padding: var(--space-1); overflow-wrap: anywhere; }
+.okr-project-link:hover, .okr-edit-link:hover { text-decoration: underline; }
+.okr-edit-link { font-size: var(--font-small); }
+.okr-empty { padding: var(--space-5); margin: 0; color: var(--text-secondary); }
+.okr-board textarea, .okr-cell-note, .okr-cell-plan, .okr-editor-body textarea, .okr-editor-objective { word-break: keep-all; overflow-wrap: anywhere; }
+.okr-grid-dialog { width: min(680px, calc(100vw - 32px)); overflow: hidden; }
+.okr-grid-dialog form { display: flex; flex-direction: column; min-height: 0; max-block-size: inherit; overflow: hidden; }
+.okr-grid-dialog .modal-header, .okr-grid-dialog .modal-actions { flex: none; }
+.okr-grid-dialog .modal-actions .danger { margin-right: auto; }
+.okr-editor-body { padding: var(--space-5); overflow-y: auto; display: grid; gap: var(--space-4); }
+.okr-editor-body textarea { width: 100%; resize: vertical; }
+.okr-editor-body fieldset { min-width: 0; border: 1px solid var(--border-default); border-radius: 6px; padding: var(--space-3); }
+.okr-editor-body .okr-recovery-fields { background: var(--status-warning-bg); }
+.okr-recovery-fields legend { padding: var(--space-1) var(--space-2); border-radius: 4px; background: var(--status-warning-bg); color: var(--status-warning); font-weight: 600; }
+.okr-editor-body .okr-recovery-fields:has(input[name="planDone"]:checked), .okr-recovery-fields:has(input[name="planDone"]:checked) legend { background: var(--surface-soft); color: var(--text-secondary); }
+.okr-editor-body .okr-project-option { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; }
+.okr-date-fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.okr-date-fields input { min-width: 0; width: 100%; }
+.okr-editor-objective { white-space: pre-wrap; margin: 0; font-weight: 600; }
+.okr-editor-body small { color: var(--text-secondary); }
+.okr-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.okr-task-focus { background: var(--surface-selected); padding: var(--space-3) var(--space-4); }
+.okr-project-shortcut { padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border-default); }
+@media (max-width: 700px) {
+  .okr-grid-toolbar { padding: var(--space-3); align-items: stretch; }
+  .okr-grid-toolbar > label { width: 100%; }
+  .okr-week-navigation { margin-left: 0; width: 100%; }
+  .okr-week-navigation input { min-width: 0; width: 100%; }
+  .okr-grid-caption { padding: var(--space-3); }
+  .okr-grid-caption > :last-child { margin-left: 0; }
+  .okr-grid tr > :first-child { position: static; }
+  .okr-grid thead tr > :first-child { position: sticky; top: 0; left: auto; }
+  .okr-date-fields { grid-template-columns: 1fr; }
+  .okr-board button, .okr-grid-dialog button, .okr-grid-toolbar input, .okr-grid-toolbar select { min-height: 44px; }
+  .okr-grid td > textarea, .okr-editor-body input, .okr-editor-body textarea, .okr-editor-body select { font-size: 16px; }
+}

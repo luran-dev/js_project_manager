@@ -103,6 +103,7 @@ export type Task = {
 };
 
 export type ProjectState = {
+  readonly objectives?: readonly import("./okrTypes").Objective[];
   readonly id: string;
   readonly name: string;
   readonly defaultCountry?: ProjectCountry;
@@ -112,6 +113,7 @@ export type ProjectState = {
 };
 
 export type Workspace = {
+  readonly okrItems?: readonly import("./okrTypes").OkrItem[];
   readonly id: string;
   readonly name: string;
   readonly users: readonly User[];

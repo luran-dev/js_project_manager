@@ -137,6 +137,18 @@ The app is a fixed-sidenav shell with a fixed top bar. The workspace body is the
 
 ## 6. Motion & Interaction
 
+### OKR workspace contract
+- Replaces the detailed Objective/KR workflow with a workspace-level spreadsheet. One OKR is one row: natural-language Objective, Target Key Results, Actual Key Results, linked projects and start/end dates.
+- The grid is the primary editing surface. Plain text cells save on blur; one short item dialog manages dates and project links; one weekly editor manages note, Green/Yellow/Red and an optional recovery plan. No metric formulas, version forms, retrospective forms, or required change reasons in the new workflow.
+- A three-week window has labeled previous/current/next controls and a date picker. Weeks start on Monday; a blank cell means no report. Cell summaries show status, note and recovery-plan text without opening a detail screen.
+- Table uses 220px text columns, 160px project column, 160px period column, 220px weekly columns and a 64px row-action column. Header and Objective column stay visible while scrolling; below 700px the Objective column is not sticky to give weekly editing the full viewport. Grid owns both-axis overflow within a 70dvh maximum. Native table semantics, labeled inputs and visible focus are required.
+- New item dialog uses at most 680px width, one form-body scroll owner and a fixed action footer. Inputs use the existing --border-control token, status text/background pairs and 44px touch controls. Preserve old stored records as migration input; new UI exposes only the simple row model.
+- Reuse board headings, text buttons, semantic status pairs, native shared dialogs and existing typography/spacing tokens. No new palette or animation.
+- Empty, read-only, validation-error, Green, Yellow, Red and unset states use text plus theme tokens. Action buttons remain keyboard reachable; dialogs retain Escape and focus restoration.
+- With the fifth OKR destination added, phone navigation uses equal-width icon/label columns within a bounded shell column; all destinations remain visible without horizontal page scrolling.
+- OKR input outlines use --border-control (#8191a2 light, #71859a dark) to distinguish empty fields with at least 3:1 contrast. Quiet layout dividers continue to use --border-default. Phone header buttons, checkbox labels and disclosure rows have 44px minimum targets.
+- Weekly status is authored independently of Actual Key Results and project progress. Completing a recovery plan does not automatically change the chosen status.
+
 Micro interactions use 120ms ease-out for hover and active feedback. Schedule changes are immediate with no decorative animation. Reduced motion receives the same layout without transitions.
 
 ## 7. Depth & Surface

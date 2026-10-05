@@ -45,7 +45,8 @@ const taskWithAssignee = (task: Task, assigneeId: string): Task => {
   return { ...task, assigneeId };
 };
 
-export function ProjectPlanner({ project, workspace, onWorkspaceChange, onProjectChange, onTasksChange, onOpenRisk }: { readonly project: ProjectState; readonly workspace: Workspace; readonly onWorkspaceChange: (updater: (workspace: Workspace) => Workspace) => void; readonly onProjectChange: (updater: (project: ProjectState) => ProjectState) => void; readonly onTasksChange: (updater: (tasks: readonly Task[]) => readonly Task[]) => void; readonly onOpenRisk: (riskId: string) => void }) {
+export function ProjectPlanner({ linkedOkrCount, onOpenOkr, initialTaskId, project, workspace, onWorkspaceChange, onProjectChange, onTasksChange, onOpenRisk }: { readonly linkedOkrCount: number; readonly onOpenOkr: () => void; readonly initialTaskId: string | undefined; readonly project: ProjectState; readonly workspace: Workspace; readonly onWorkspaceChange: (updater: (workspace: Workspace) => Workspace) => void; readonly onProjectChange: (updater: (project: ProjectState) => ProjectState) => void; readonly onTasksChange: (updater: (tasks: readonly Task[]) => readonly Task[]) => void; readonly onOpenRisk: (riskId: string) => void }) {
+  const [focusTaskId, setFocusTaskId] = useState(initialTaskId);
   const [query, setQuery] = useState("");
   const [filterField, setFilterField] = useState<FilterField>("taskName");
   const [zoom, setZoom] = useState<Zoom>("month");
@@ -63,12 +64,12 @@ export function ProjectPlanner({ project, workspace, onWorkspaceChange, onProjec
   const scheduledTasks = useMemo(() => cascadeTasks(tasks, workspace.ptos, country), [country, tasks, workspace.ptos]);
   const assigneeById = new Map(workspace.users.map((user) => [user.id, user.name]));
   const normalizedQuery = query.trim().toLowerCase();
-  const rows = visibleTasks(scheduledTasks, collapsedIds).filter((task) => {
+  const rows = (focusTaskId ? scheduledTasks.filter((task) => task.id === focusTaskId) : visibleTasks(scheduledTasks, collapsedIds)).filter((task) => {
     const value = filterField === "status" ? task.status : filterField === "assignee" ? assigneeById.get(task.assigneeId ?? "") ?? "Unassigned" : task.title;
     return value.toLowerCase().includes(normalizedQuery);
   });
   const allExecutionTasks = scheduledTasks.map(actualTask);
-  const chartTasks = [...scheduledTasks, ...allExecutionTasks];
+  const chartTasks = [...scheduledTasks, ...allExecutionTasks].filter((task) => !focusTaskId || task.id === focusTaskId);
   const minDate = chartTasks.map((task) => task.startDate).sort()[0] ?? "2026-06-01";
   const maxDate = chartTasks.map((task) => task.endDate).sort().at(-1) ?? "2026-08-31";
   const projectDates = tasks.flatMap((task) => [task.startDate, task.endDate]).sort();
@@ -236,6 +237,8 @@ export function ProjectPlanner({ project, workspace, onWorkspaceChange, onProjec
   return (
     <section className="board planner-board" data-pane={activePane}>
       <div className="board-heading"><div><span className="eyebrow">Project workspace</span><h1>{project.name}</h1><p>{tasks.length} tasks <span aria-hidden="true">·</span> {country} working calendar</p></div><div className="tabs" role="group" aria-label="Project view"><button aria-pressed={tab === "planner"} className={tab === "planner" ? "selected" : ""} onClick={() => setTab("planner")}>Planner</button><button aria-pressed={tab === "execution"} className={tab === "execution" ? "selected" : ""} onClick={() => setTab("execution")}>Execution</button><button aria-pressed={tab === "resources"} className={tab === "resources" ? "selected" : ""} onClick={() => setTab("resources")}>Capacity</button></div></div>
+      {linkedOkrCount > 0 && <div className="okr-project-shortcut"><button className="text-button" onClick={onOpenOkr}>View linked OKRs ({linkedOkrCount})</button></div>}
+      {focusTaskId && <div className="okr-task-focus">Focused task: {tasks.find((task) => task.id === focusTaskId)?.title ?? "Deleted task"} <button className="text-button" onClick={() => setFocusTaskId(undefined)}>Show all tasks</button></div>}
       <div className="toolbar">
         {tab !== "resources" ? <><div className="searchbox"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search tasks" placeholder={`Search ${filterLabels[filterField]}...`} /></div><select className="filter-select" aria-label="Search field" value={filterField} onChange={(event) => setFilterField(parseFilterField(event.target.value))}>{Object.entries(filterLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></> : <p className="capacity-help">Set available capacity for each day. 1 MD = one resource's full working day.</p>}
         {tab === "planner" ? <button className="text-button primary" onClick={addChild} disabled={plannerLocked}><Plus size={16} /> Add task</button> : null}

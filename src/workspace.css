@@ -216,8 +216,9 @@ label:has(:checked) .selection-check { opacity: 1; }
   .brand { font-size: 18px; }
   .appearance-trigger { min-block-size: 40px; padding: 8px; }
   .appearance-trigger span { font-size: var(--font-caption); }
-  .side-rail { gap: 4px; padding-inline: 8px; }
-  .rail-button { padding-inline: 10px; }
+  .app-shell { grid-template-columns: minmax(0, 1fr); }
+  .side-rail { gap: 4px; padding-inline: 8px; min-inline-size: 0; }
+  .rail-button { padding-inline: 4px; flex: 1; min-inline-size: 0; flex-direction: column; gap: 4px; block-size: 52px; }
   .rail-button.bottom span { display: none; }
   .context-field { flex-basis: 100%; }
   .toolbar { gap: 8px; }

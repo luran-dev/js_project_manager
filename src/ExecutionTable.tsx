@@ -100,7 +100,7 @@ export function ExecutionTable({ rows, actualRows, allTasks, users, risks, onOpe
                   setHoursText((current) => ({ ...current, [baseline.id]: value }));
                   if (/^\d+$/.test(value)) { onActualEstimatedHoursChange(baseline.id, Number(value) * 8); }
                 }} /></td>
-                <td className={delta.delayDays > 0 || delta.mdDelta > 0 ? "variance bad" : "variance"}>{delta.delayDays}d / {delta.mdDelta} MD</td>
+                <td className={delta.delayDays > 0 || delta.mdDelta > 0 ? "variance bad" : "variance"}>{delta.delayDays}/ {delta.mdDelta} MD</td>
               </tr>,
             ];
           })}

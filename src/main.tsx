@@ -4,6 +4,7 @@ import { App } from "./App";
 import { applyTheme, readTheme } from "./theme";
 import "./styles.css";
 import "./workspace.css";
+import "./okr.css";
 
 applyTheme(readTheme(), window.matchMedia("(prefers-color-scheme: dark)").matches);
 

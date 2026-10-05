@@ -1,6 +1,8 @@
-import { BarChart3, ChevronDown, Folder, LogOut, Palette, Settings, ShieldAlert, UserRound, UsersRound } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { BarChart3, ChevronDown, Folder, LogOut, Palette, Settings, ShieldAlert, Target, UserRound, UsersRound } from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ProjectManagerModal } from "./ProjectManagerModal";
+import { OkrView } from "./OkrView";
+import { workspaceOkrs } from "./okrGrid";
 import { ProjectPlanner } from "./ProjectPlanner";
 import { PasswordResetFlow } from "./PasswordResetFlow";
 import { ResourceAnalyticsView } from "./ResourceAnalyticsView";
@@ -20,7 +22,7 @@ const clearAssignee = (task: Task): Task => {
   return rest;
 };
 const hasChildren = (tasks: readonly Task[], id: string): boolean => tasks.some((task) => task.parentId === id);
-type AppView = "planner" | "reports" | "risks";
+type AppView = "planner" | "reports" | "risks" | "okr";
 type AuthStatus = "loading" | "signedOut" | "signedIn";
 
 export function App() {
@@ -28,6 +30,8 @@ export function App() {
   const [showAppearance, setShowAppearance] = useState(false);
   const [contextExpanded, setContextExpanded] = useState(false);
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null);
+  const snapshotRef = useRef<AppSnapshot | null>(null);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [authMode, setAuthMode] = useState<"login" | "register" | "reset">("login");
   const [signupName, setSignupName] = useState("");
@@ -42,6 +46,8 @@ export function App() {
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [showResourceManager, setShowResourceManager] = useState(false);
   const [view, setView] = useState<AppView>("planner");
+  const [okrProjectFilter, setOkrProjectFilter] = useState("");
+  const [focusedTaskId, setFocusedTaskId] = useState<string>();
   const [focusedRiskId, setFocusedRiskId] = useState<string>();
   const workspaces = snapshot?.workspaces ?? [];
   const currentUserWorkspaceIds = useMemo(() => snapshot?.currentUser.workspaceMemberships.map((membership) => membership.workspaceId) ?? [], [snapshot]);
@@ -52,6 +58,7 @@ export function App() {
     const nextWorkspaceId = nextSnapshot.currentUser.workspaceMemberships[0]?.workspaceId ?? nextSnapshot.workspaces[0]?.id ?? "";
     const nextWorkspace = nextSnapshot.workspaces.find((item) => item.id === nextWorkspaceId) ?? nextSnapshot.workspaces[0];
     setSnapshot(nextSnapshot);
+    snapshotRef.current = nextSnapshot;
     setWorkspaceId(nextWorkspace?.id ?? "");
     setProjectId(nextWorkspace?.projects[0]?.id ?? "");
   };
@@ -91,6 +98,7 @@ export function App() {
   const signOut = async () => {
     await projectVibeRepository.logout();
     setSnapshot(null);
+    snapshotRef.current = null;
     setWorkspaceId("");
     setProjectId("");
     setAuthStatus("signedOut");
@@ -140,15 +148,16 @@ export function App() {
   const dates = project.tasks.flatMap((task) => [task.startDate, task.endDate]).sort();
   const windowStart = dates[0] ?? "2026-06-01";
   const windowEnd = dates.at(-1) ?? "2026-08-31";
-  const saveSnapshot = (updater: (snapshot: AppSnapshot) => AppSnapshot) => setSnapshot((current) => {
+  const saveSnapshot = (updater: (snapshot: AppSnapshot) => AppSnapshot) => {
+    const current = snapshotRef.current;
     if (current === null) {
       return current;
     }
     const nextSnapshot = updater(current);
-    setSaveError("");
-    void projectVibeRepository.saveSnapshot(nextSnapshot).catch((error) => setSaveError(error instanceof Error ? error.message : "Save failed"));
-    return nextSnapshot;
-  });
+    snapshotRef.current = nextSnapshot;
+    setSnapshot(nextSnapshot);
+    saveQueue.current = saveQueue.current.then(() => projectVibeRepository.saveSnapshot(nextSnapshot)).then(() => setSaveError("")).catch((error) => setSaveError(error instanceof Error ? error.message : "Save failed"));
+  };
   const updateWorkspace = (updater: (workspace: Workspace) => Workspace) => saveSnapshot((current) => ({ ...current, workspaces: current.workspaces.map((item) => (item.id === workspace.id ? updater(item) : item)) }));
   const updateProject = (projectUpdater: (project: ProjectState) => ProjectState) => updateWorkspace((current) => ({ ...current, projects: current.projects.map((item) => (item.id === project.id ? projectUpdater(item) : item)) }));
   const setProjectTasks = (updater: (tasks: readonly Task[]) => readonly Task[]) => updateProject((current) => {
@@ -158,6 +167,7 @@ export function App() {
   });
 
   const selectWorkspace = (id: string) => {
+    setOkrProjectFilter(""); setFocusedTaskId(undefined);
     const nextWorkspace = userWorkspaces.find((item) => item.id === id);
     setWorkspaceId(id);
     setProjectId(nextWorkspace?.projects[0]?.id ?? "");
@@ -199,14 +209,14 @@ export function App() {
     <div className="app-shell">
       <a className="skip-link" href="#workspace">Skip to workspace</a>
       <header className="topbar"><div className="brand" aria-label="ProjectVibe"><span className="brand-mark"><BarChart3 size={18} /></span><strong>ProjectVibe</strong></div><div className="topbar-actions">{appearanceButton}<div className="profile"><span className="avatar"><UserRound size={18} /></span><span>{currentUser.name}</span></div></div></header>
-      <nav className="side-rail" aria-label="Primary navigation"><button className={view === "planner" ? "rail-button active" : "rail-button"} aria-label="Projects" aria-current={view === "planner" ? "page" : undefined} onClick={() => setView("planner")}><Folder size={20} /><span>Projects</span></button><button className={view === "risks" ? "rail-button active" : "rail-button"} aria-label="Risks" aria-current={view === "risks" ? "page" : undefined} onClick={() => { setFocusedRiskId(undefined); setView("risks"); }}><ShieldAlert size={20} /><span>Risks</span></button><button className={view === "reports" ? "rail-button active" : "rail-button"} aria-label="Reports" aria-current={view === "reports" ? "page" : undefined} onClick={() => setView("reports")}><BarChart3 size={20} /><span>Reports</span></button><button className="rail-button bottom" aria-label="Sign out" onClick={signOut}><LogOut size={20} /><span>Sign out</span></button></nav>
+      <nav className="side-rail" aria-label="Primary navigation"><button className={view === "planner" ? "rail-button active" : "rail-button"} aria-label="Projects" aria-current={view === "planner" ? "page" : undefined} onClick={() => { setFocusedTaskId(undefined); setView("planner"); }}><Folder size={20} /><span>Projects</span></button><button className={view === "okr" ? "rail-button active" : "rail-button"} aria-label="OKR" aria-current={view === "okr" ? "page" : undefined} onClick={() => { setOkrProjectFilter(""); setView("okr"); }}><Target size={20} /><span>OKR</span></button><button className={view === "risks" ? "rail-button active" : "rail-button"} aria-label="Risks" aria-current={view === "risks" ? "page" : undefined} onClick={() => { setFocusedRiskId(undefined); setView("risks"); }}><ShieldAlert size={20} /><span>Risks</span></button><button className={view === "reports" ? "rail-button active" : "rail-button"} aria-label="Reports" aria-current={view === "reports" ? "page" : undefined} onClick={() => setView("reports")}><BarChart3 size={20} /><span>Reports</span></button><button className="rail-button bottom" aria-label="Sign out" onClick={signOut}><LogOut size={20} /><span>Sign out</span></button></nav>
       {appearanceDialog}
 
       <main className="workspace" id="workspace" tabIndex={-1}>
         <section className={`context-bar${contextExpanded ? " expanded" : ""}`} aria-label="Workspace and project context">
           <button className="context-toggle" aria-expanded={contextExpanded} onClick={() => setContextExpanded((current) => !current)}><span><small>{workspace.name}</small><strong>{project.name}</strong></span><ChevronDown size={18} /></button>
           <div className="context-field"><span>Workspace</span><div className="select-action"><select aria-label="Workspace selector" value={workspace.id} onChange={(event) => selectWorkspace(event.target.value)}>{userWorkspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="context-icon-button" title="Manage workspaces" aria-label="Manage workspaces" onClick={() => setShowWorkspaceManager(true)}><Settings size={15} /></button></div></div>
-          <div className="context-field"><span>Project</span><div className="select-action"><select aria-label="Project selector" value={project.id} onChange={(event) => setProjectId(event.target.value)}>{workspace.projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="context-icon-button" title="Manage projects" aria-label="Manage projects" onClick={() => setShowProjectManager(true)}><Settings size={15} /></button></div></div>
+          <div className="context-field"><span>Project</span><div className="select-action"><select aria-label="Project selector" value={project.id} onChange={(event) => { setProjectId(event.target.value); setOkrProjectFilter(""); setFocusedTaskId(undefined); }}>{workspace.projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="context-icon-button" title="Manage projects" aria-label="Manage projects" onClick={() => setShowProjectManager(true)}><Settings size={15} /></button></div></div>
           <button className="text-button resource-action" title="Manage workspace resources and PTO" aria-label="Manage workspace resources and PTO" onClick={() => setShowResourceManager(true)}><UsersRound size={16} /> Team & PTO</button>
           <div className="context-metric"><span>Country</span><strong>{project.defaultCountry ?? "Korea"}</strong></div>
           <div className="context-metric"><span>Resources</span><strong>{workspace.users.length}</strong></div>
@@ -226,7 +236,7 @@ export function App() {
           saveResources(users, ptos, deletedResourceIds);
           setShowResourceManager(false);
         }} /> : null}
-        {view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : view === "risks" ? <RiskRegister projectName={project.name} risks={project.risks ?? []} tasks={project.tasks} users={workspace.users} focusedRiskId={focusedRiskId} onChange={(risks) => updateProject((current) => ({ ...current, risks }))} /> : <ProjectPlanner project={project} workspace={workspace} onWorkspaceChange={updateWorkspace} onProjectChange={updateProject} onTasksChange={setProjectTasks} onOpenRisk={(riskId) => { setFocusedRiskId(riskId); setView("risks"); }} />}
+        {view === "okr" ? <OkrView key={workspace.id + okrProjectFilter} workspace={workspace} author={currentUser.name} canEdit={currentUser.workspaceMemberships.some((membership) => membership.workspaceId === workspace.id && membership.role !== "VIEWER")} initialProjectId={okrProjectFilter} onChange={updateWorkspace} onOpenProject={(id) => { setProjectId(id); setFocusedTaskId(undefined); setView("planner"); }} /> : view === "reports" ? <ResourceAnalyticsView workspace={workspace} /> : view === "risks" ? <RiskRegister projectName={project.name} risks={project.risks ?? []} tasks={project.tasks} users={workspace.users} focusedRiskId={focusedRiskId} onChange={(risks) => updateProject((current) => ({ ...current, risks }))} /> : <ProjectPlanner linkedOkrCount={workspaceOkrs(workspace).filter((item) => item.projectIds.includes(project.id)).length} onOpenOkr={() => { setOkrProjectFilter(project.id); setView("okr"); }} key={workspace.id + project.id + (focusedTaskId ?? "")} initialTaskId={focusedTaskId} project={project} workspace={workspace} onWorkspaceChange={updateWorkspace} onProjectChange={updateProject} onTasksChange={setProjectTasks} onOpenRisk={(riskId) => { setFocusedRiskId(riskId); setView("risks"); }} />}
       </main>
     </div>
   );
